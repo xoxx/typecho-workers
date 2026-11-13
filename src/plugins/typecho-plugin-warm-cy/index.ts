@@ -8,15 +8,16 @@ import { generateSecurityToken } from '@/lib/auth';
 import { isAdminActionResponse, requireAdminAction } from '@/lib/admin-auth';
 import { computeUrls } from '@/lib/options';
 import adminCss from './admin.css?raw';
-import { markdownAlertIconStyles, normalizeMarkdownAlertStyleSettings, markdownAlertStyleEditorHtml, restoreMarkdownAlertIcons } from './markdown-alerts';
+import { restoreMarkdownAlertIcons } from './markdown-alerts';
 
 const THEME_ID = 'typecho-theme-warm-cy';
-const OPTION_KEY = `theme:${THEME_ID}`;
 const ADMIN_PATH = '/api/admin/theme-pin';
 const ADMIN_SETTINGS_API_PATH = '/api/admin/cy-companion-settings';
 const ADMIN_PAGE_SLUG = 'cy-companion';
 const PLUGIN_OPTION_KEY = 'plugin:typecho-plugin-warm-cy';
-const PLUGIN_VERSION = '2026.11.07.21.00';
+const OPTION_KEY = `theme:${THEME_ID}`;
+const PLUGIN_VERSION = '2026.11.10.21.03';
+const THEME_VERSION = '2026.11.10.21.03';
 
 function parsePluginSettings(value: unknown): Record<string, unknown> {
   if (typeof value !== 'string' || !value) return {};
@@ -146,19 +147,61 @@ function escapeHtml(value: unknown): string {
   })[character] || character);
 }
 
-function featureSettingsPageHtml(csrfToken: string, rawSettings: unknown): string {
+function featureSettingsPageHtml(csrfToken: string, rawSettings: unknown, rawThemeSettings: unknown): string {
   const settings = parsePluginSettings(rawSettings);
+  let legacy: Record<string, unknown> = {};
+  try {
+    const parsed = typeof rawThemeSettings === 'string' ? JSON.parse(rawThemeSettings) : rawThemeSettings;
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) legacy = parsed as Record<string, unknown>;
+  } catch { /* Keep empty migration defaults when legacy settings are malformed. */ }
+  const movedValue = (key: string) => settings[key] !== undefined ? settings[key] : legacy[key];
+  const nativeField = (key: string, type: 'text' | 'textarea' | 'checkbox') => {
+    const fieldIndex = key === 'pinnedIds' ? 0
+      : key === 'articleDeclarationHtml' ? 33
+        : key === 'footerCustomHtml' ? 34
+          : (() => {
+            const suffix = Number(key.slice(-2));
+            const groupIndex = (suffix - 1) * 3;
+            return groupIndex + (key.startsWith('linktxt') ? 1 : key.startsWith('links') ? 2 : 3);
+          })();
+    const id = key + '-0-' + (fieldIndex + 1);
+    const optionId = 'typecho-option-item-' + key + '-' + fieldIndex;
+    const value = movedValue(key);
+    const safe = escapeHtml(value ?? '');
+    const schema: Record<string, { label: string; description: string }> = {"pinnedIds":{"label":"首页置顶文章 ID","description":"只控制首页置顶。填写文章 ID，多个 ID 用英文逗号分隔；其他页面不受影响。"},"linktxt01":{"label":"页脚链接 1：显示文字","description":"留空则不显示这组链接。"},"links01":{"label":"页脚链接 1：链接地址","description":"支持 https://、http://、mailto:；普通域名可直接填写。"},"linkblank01":{"label":"页脚链接 1：在新窗口打开","description":""},"linktxt02":{"label":"页脚链接 2：显示文字","description":"留空则不显示这组链接。"},"links02":{"label":"页脚链接 2：链接地址","description":"支持 https://、http://、mailto:；普通域名可直接填写。"},"linkblank02":{"label":"页脚链接 2：在新窗口打开","description":""},"linktxt03":{"label":"页脚链接 3：显示文字","description":"留空则不显示这组链接。"},"links03":{"label":"页脚链接 3：链接地址","description":"支持 https://、http://、mailto:；普通域名可直接填写。"},"linkblank03":{"label":"页脚链接 3：在新窗口打开","description":""},"linktxt04":{"label":"页脚链接 4：显示文字","description":"留空则不显示这组链接。"},"links04":{"label":"页脚链接 4：链接地址","description":"支持 https://、http://、mailto:；普通域名可直接填写。"},"linkblank04":{"label":"页脚链接 4：在新窗口打开","description":""},"linktxt05":{"label":"页脚链接 5：显示文字","description":"留空则不显示这组链接。"},"links05":{"label":"页脚链接 5：链接地址","description":"支持 https://、http://、mailto:；普通域名可直接填写。"},"linkblank05":{"label":"页脚链接 5：在新窗口打开","description":""},"linktxt06":{"label":"页脚链接 6：显示文字","description":"留空则不显示这组链接。"},"links06":{"label":"页脚链接 6：链接地址","description":"支持 https://、http://、mailto:；普通域名可直接填写。"},"linkblank06":{"label":"页脚链接 6：在新窗口打开","description":""},"linktxt07":{"label":"页脚链接 7：显示文字","description":"留空则不显示这组链接。"},"links07":{"label":"页脚链接 7：链接地址","description":"支持 https://、http://、mailto:；普通域名可直接填写。"},"linkblank07":{"label":"页脚链接 7：在新窗口打开","description":""},"linktxt08":{"label":"页脚链接 8：显示文字","description":"留空则不显示这组链接。"},"links08":{"label":"页脚链接 8：链接地址","description":"支持 https://、http://、mailto:；普通域名可直接填写。"},"linkblank08":{"label":"页脚链接 8：在新窗口打开","description":""},"linktxt09":{"label":"页脚链接 9：显示文字","description":"留空则不显示这组链接。"},"links09":{"label":"页脚链接 9：链接地址","description":"支持 https://、http://、mailto:；普通域名可直接填写。"},"linkblank09":{"label":"页脚链接 9：在新窗口打开","description":""},"linktxt10":{"label":"页脚链接 10：显示文字","description":"留空则不显示这组链接。"},"links10":{"label":"页脚链接 10：链接地址","description":"支持 https://、http://、mailto:；普通域名可直接填写。"},"linkblank10":{"label":"页脚链接 10：在新窗口打开","description":""},"articleDeclarationHtml":{"label":"文章内容声明","description":"<style>ul.typecho-option:has(textarea[name=\"articleDeclarationHtml\"]){box-sizing:border-box!important;width:100%!important;background:#fff!important;border:1px solid #e5e7eb!important;border-radius:14px!important;padding:22px 26px!important;margin:18px 0!important;box-shadow:0 4px 16px rgba(31,41,55,.04)!important}ul.typecho-option:has(textarea[name=\"articleDeclarationHtml\"])>li{padding:0!important;margin:0!important}ul.typecho-option:has(textarea[name=\"articleDeclarationHtml\"]) .typecho-label{display:block!important;margin:0 0 8px!important;font-size:18px!important;font-weight:700!important;color:#27332e!important}ul.typecho-option:has(textarea[name=\"articleDeclarationHtml\"]) .description{margin:14px 0 0!important;line-height:1.7!important;color:#7b8580!important}ul.typecho-option:has(textarea[name=\"articleDeclarationHtml\"]) textarea{box-sizing:border-box!important;width:100%!important;max-width:100%!important;min-height:180px!important;display:block!important}</style>仅在文章详情页显示，位于正文末尾、评论区之前；笔记页不显示。留空则不显示。支持 HTML。<br><strong>变量说明：</strong><br><code>{site.name}</code>：网站名称；<code>{site.url}</code>：网站首页地址；<code>{site.description}</code>：网站简介。<br><code>{post.title}</code>：当前文章标题；<code>{post.url}</code>：当前文章完整访问地址。<br><strong>样式说明：</strong>声明内 CSS 仅作用于声明区块。需要边框、背景、圆角或内边距时，可自行在 HTML/CSS 中定义。变量替换值会进行 HTML 转义。"},"footerCustomHtml":{"label":"站点底部内容","description":"设置显示于站点底部的内容（HTML）"}};
+    const field = schema[key];
+    const description = field?.description ? '<p class="description">' + field.description + '</p>' : '';
+    if (type === 'checkbox') return '<ul class="typecho-option" id="' + optionId + '"><li><label class="typecho-label" for="' + id + '"><input type="checkbox" id="' + id + '" name="' + key + '" data-cy-setting="' + key + '" value="1" ' + (value === true || value === 1 || value === '1' ? 'checked' : '') + '> ' + field.label + '</label>' + description + '</li></ul>';
+    if (type === 'textarea') return '<ul class="typecho-option" id="' + optionId + '"><li><label class="typecho-label" for="' + id + '">' + field.label + '</label><textarea id="' + id + '" name="' + key + '" data-cy-setting="' + key + '">' + safe + '</textarea>' + description + '</li></ul>';
+    return '<ul class="typecho-option" id="' + optionId + '"><li><label class="typecho-label" for="' + id + '">' + field.label + '</label><input id="' + id + '" name="' + key + '" type="text" class="text" data-cy-setting="' + key + '" value="' + safe + '">' + description + '</li></ul>';
+  };
+  const movedFields = [
+    nativeField('pinnedIds', 'text'),
+    nativeField('linktxt01', 'text'), nativeField('links01', 'text'), nativeField('linkblank01', 'checkbox'),
+    nativeField('linktxt02', 'text'), nativeField('links02', 'text'), nativeField('linkblank02', 'checkbox'),
+    nativeField('linktxt03', 'text'), nativeField('links03', 'text'), nativeField('linkblank03', 'checkbox'),
+    nativeField('linktxt04', 'text'), nativeField('links04', 'text'), nativeField('linkblank04', 'checkbox'),
+    nativeField('linktxt05', 'text'), nativeField('links05', 'text'), nativeField('linkblank05', 'checkbox'),
+    nativeField('linktxt06', 'text'), nativeField('links06', 'text'), nativeField('linkblank06', 'checkbox'),
+    nativeField('linktxt07', 'text'), nativeField('links07', 'text'), nativeField('linkblank07', 'checkbox'),
+    nativeField('linktxt08', 'text'), nativeField('links08', 'text'), nativeField('linkblank08', 'checkbox'),
+    nativeField('linktxt09', 'text'), nativeField('links09', 'text'), nativeField('linkblank09', 'checkbox'),
+    nativeField('linktxt10', 'text'), nativeField('links10', 'text'), nativeField('linkblank10', 'checkbox'),
+    nativeField('articleDeclarationHtml', 'textarea'),
+    nativeField('footerCustomHtml', 'textarea'),
+  ].join('');
   const commentsEnabled = isEnabled(settings.showCommentManagementButtons);
   const searchEnabled = isEnabled(settings.showHomeSearchButton);
   const htmlEnhancementEnabled = isEnabled(settings.htmlEnhancementEnabled, false);
-  const markdownAlertStyleSettings = normalizeMarkdownAlertStyleSettings(settings.markdownAlertStyleSettings);
   return `
     <div class="col-mb-12 col-tb-8 col-tb-offset-2 cy-feature-settings"
       data-cy-feature-settings data-csrf-token="${escapeHtml(csrfToken)}">
-      <div class="cy-feature-links">
+      <div class="cy-feature-header">
+        <strong>CY服务插件</strong>
+        <span class="cy-feature-version">版本：${PLUGIN_VERSION}</span>
         <a href="/admin/options-theme">返回主题设置</a>
       </div>
-      <p class="cy-feature-version">CY 插件版本：${PLUGIN_VERSION}</p>
+      <div class="cy-feature-migrated-settings warm-theme-config-form">${movedFields}</div>
       <section class="cy-feature-card">
         <label class="cy-feature-toggle">
           <input type="checkbox" data-cy-setting="showCommentManagementButtons" ${commentsEnabled ? 'checked' : ''}>
@@ -178,7 +221,7 @@ function featureSettingsPageHtml(csrfToken: string, rawSettings: unknown): strin
           <input type="checkbox" data-cy-setting="htmlEnhancementEnabled" ${htmlEnhancementEnabled ? 'checked' : ''}>
           <span>正文 HTML / CSS / JavaScript 增强</span>
         </label>
-        <p>允许文章和独立页面正文使用内嵌 &lt;style&gt;、&lt;script&gt;、SVG，以及 HTML 的 class、id、data、aria 和 style 属性。开启后正文脚本会在访客浏览器中执行，请确保只有可信人员能够发布内容；笔记由独立笔记插件处理，评论区不受影响。</p>
+        <p><strong class="cy-feature-warning">此插件与markdown插件冲突，如果网站文章以html格式为主，就启用此插件否则不建议启用。</strong> 允许文章和独立页面正文使用内嵌 &lt;style&gt;、&lt;script&gt;、SVG，以及 HTML 的 class、id、data、aria 和 style 属性。开启后正文脚本会在访客浏览器中执行，请确保只有可信人员能够发布内容；笔记由独立笔记插件处理，评论区不受影响。</p>
       </section>
       <section class="cy-feature-card">
         <label class="cy-feature-toggle">
@@ -187,7 +230,6 @@ function featureSettingsPageHtml(csrfToken: string, rawSettings: unknown): strin
         </label>
         <p>开启后自动读取数据库中的站点地址（siteUrl），将备用域名的公开页面临时跳转到当前主域名，并保留文章路径和查询参数。关闭后立即停止插件跳转；后台、API 和静态资源不受影响。请先确保主域名与备用域名的 DNS、HTTPS 证书均正常。</p>
       </section>
-      ${markdownAlertStyleEditorHtml(markdownAlertStyleSettings)}
       <div class="cy-feature-actions">
         <button type="button" class="btn" data-cy-save>保存设置</button>
         <span data-cy-save-status role="status" aria-live="polite"></span>
@@ -200,43 +242,109 @@ function featureSettingsPageHtml(csrfToken: string, rawSettings: unknown): strin
         root.dataset.initialized = '1';
         var save = root.querySelector('[data-cy-save]');
         var status = root.querySelector('[data-cy-save-status]');
-        var noteStyleEnabled = root.querySelector('[data-cy-alert-style-enabled]');
-        var noteStyleReset = root.querySelector('[data-cy-alert-reset]');
-        var noteStyleFields = root.querySelectorAll('[data-cy-alert-style-field], [data-cy-alert-icon-visible], [data-cy-alert-icon-size], [data-cy-alert-icon-gap]');
-        function syncNoteStyleControls() {
-          noteStyleFields.forEach(function (field) { field.disabled = !noteStyleEnabled.checked; });
-        }
-        noteStyleEnabled.addEventListener('change', syncNoteStyleControls);
-        syncNoteStyleControls();
-        noteStyleReset.addEventListener('click', function () {
-          root.querySelectorAll('[data-cy-alert-style-field]').forEach(function (field) {
-            field.value = field.dataset.cyDefaultValue || '';
+        var form = root.querySelector('.warm-theme-config-form');
+        if (form && form.dataset.warmCyLayoutApplied !== '1') {
+          form.dataset.warmCyLayoutApplied = '1';
+          var getField = function (name) {
+            var input = form.querySelector('[name="' + name + '"]');
+            return input ? input.closest('.typecho-option') : null;
+          };
+
+          var firstLinkField = getField('linktxt01');
+          if (firstLinkField) {
+            var section = document.createElement('section');
+            section.className = 'warm-theme-links-group';
+            var heading = document.createElement('div');
+            heading.className = 'warm-theme-links-heading';
+            var title = document.createElement('strong');
+            title.textContent = '页面连接';
+            var description = document.createElement('span');
+            description.textContent = '支持 https://、http://、mailto:、站内链接；普通域名可直接填写。';
+            heading.append(title, description);
+            section.append(heading);
+            firstLinkField.before(section);
+
+            for (var index = 1; index <= 10; index += 1) {
+              var suffix = String(index).padStart(2, '0');
+              var textField = getField('linktxt' + suffix);
+              var urlField = getField('links' + suffix);
+              var blankField = getField('linkblank' + suffix);
+              var textInput = textField && textField.querySelector('input[name="linktxt' + suffix + '"]');
+              var urlInput = urlField && urlField.querySelector('input[name="links' + suffix + '"]');
+              var blankInput = blankField && blankField.querySelector('input[name="linkblank' + suffix + '"]');
+              if (!textInput || !urlInput || !blankInput) continue;
+
+              var row = document.createElement('div');
+              row.className = 'warm-theme-link-row';
+              var textLine = document.createElement('div');
+              textLine.className = 'warm-theme-link-text-line';
+              var textLabel = document.createElement('label');
+              textLabel.htmlFor = textInput.id;
+              textLabel.textContent = '文字' + index + '：';
+              textInput.classList.add('warm-theme-link-input');
+              textLine.append(textLabel, textInput);
+
+              var blankLabel = document.createElement('label');
+              blankLabel.className = 'warm-theme-link-new-window';
+              blankLabel.htmlFor = blankInput.id;
+              var blankText = document.createElement('span');
+              blankText.textContent = '新窗口打开';
+              blankLabel.append(blankInput, blankText);
+              textLine.append(blankLabel);
+
+              var urlLine = document.createElement('div');
+              urlLine.className = 'warm-theme-link-url-line';
+              var urlLabel = document.createElement('label');
+              urlLabel.htmlFor = urlInput.id;
+              urlLabel.textContent = '网址' + index + '：';
+              urlInput.classList.add('warm-theme-link-input');
+              urlLine.append(urlLabel, urlInput);
+
+              row.append(textLine, urlLine);
+              section.append(row);
+              textField.remove();
+              urlField.remove();
+              blankField.remove();
+            }
+          }
+
+          var wrapSettingsCard = function (className, names) {
+            var fields = names.map(getField).filter(Boolean);
+            if (!fields.length) return;
+            var card = document.createElement('section');
+            card.className = 'warm-theme-settings-card ' + className;
+            fields[0].before(card);
+            fields.forEach(function (field) { card.append(field); });
+          };
+
+          wrapSettingsCard('warm-theme-home-card', ['pinnedIds']);
+          wrapSettingsCard('warm-theme-footer-card', ['footerCustomHtml']);
+
+          form.querySelectorAll('.typecho-option:not(.typecho-option-submit)').forEach(function (option) {
+            if (option.style.display === 'none') return;
+            var item = option.querySelector(':scope > li');
+            if (!item || item.querySelector(':scope > .warm-theme-field-head')) return;
+            var label = item.querySelector(':scope > .typecho-label');
+            var description = item.querySelector(':scope > .description');
+            if (label && label.querySelector('input[type="checkbox"], input[type="radio"]')) return;
+
+            var head = document.createElement('div');
+            head.className = 'warm-theme-field-head';
+            if (label) head.append(label);
+            if (description) head.append(description);
+            var control = document.createElement('div');
+            control.className = 'warm-theme-field-control';
+            Array.from(item.children).forEach(function (child) {
+              if (child !== label && child !== description) control.append(child);
+            });
+            item.append(head, control);
           });
-          var visible = root.querySelector('[data-cy-alert-icon-visible]');
-          var size = root.querySelector('[data-cy-alert-icon-size]');
-          var gap = root.querySelector('[data-cy-alert-icon-gap]');
-          visible.checked = visible.dataset.cyDefaultChecked === 'true';
-          size.value = size.dataset.cyDefaultValue || '18';
-          gap.value = gap.dataset.cyDefaultValue || '8';
-          noteStyleEnabled.checked = true;
-          syncNoteStyleControls();
-          status.textContent = '已恢复默认样式，请点击保存设置生效';
-        });
+        }
         save.addEventListener('click', async function () {
-          var comments = root.querySelector('[data-cy-setting="showCommentManagementButtons"]');
-          var search = root.querySelector('[data-cy-setting="showHomeSearchButton"]');
-          var htmlEnhancement = root.querySelector('[data-cy-setting="htmlEnhancementEnabled"]');
-          var canonicalDomainRedirect = root.querySelector('[data-cy-setting="canonicalDomainRedirectEnabled"]');
-          var noteStyleSettings = { enabled: !!noteStyleEnabled.checked, types: {}, icon: {
-            visible: !!root.querySelector('[data-cy-alert-icon-visible]').checked,
-            size: Number(root.querySelector('[data-cy-alert-icon-size]').value || 18),
-            gap: Number(root.querySelector('[data-cy-alert-icon-gap]').value || 0)
-          } };
-          root.querySelectorAll('[data-cy-alert-style-field]').forEach(function (field) {
-            var parts = (field.dataset.cyAlertStyleField || '').split('.');
-            if (parts.length !== 2) return;
-            noteStyleSettings.types[parts[0]] = noteStyleSettings.types[parts[0]] || {};
-            noteStyleSettings.types[parts[0]][parts[1]] = field.type === 'number' ? Number(field.value) : field.value;
+          var movedSettings = {};
+          root.querySelectorAll('[data-cy-setting]').forEach(function (field) {
+            var key = field.getAttribute('data-cy-setting');
+            movedSettings[key] = field.type === 'checkbox' ? !!field.checked : field.value;
           });
           save.disabled = true;
           status.textContent = '正在保存…';
@@ -248,11 +356,11 @@ function featureSettingsPageHtml(csrfToken: string, rawSettings: unknown): strin
                 'X-CSRF-Token': root.dataset.csrfToken || ''
               },
               body: JSON.stringify({
-                showCommentManagementButtons: !!comments.checked,
-                showHomeSearchButton: !!search.checked,
-                htmlEnhancementEnabled: !!htmlEnhancement.checked,
-                canonicalDomainRedirectEnabled: !!canonicalDomainRedirect.checked,
-                markdownAlertStyleSettings: noteStyleSettings
+                ...movedSettings,
+                showCommentManagementButtons: !!root.querySelector('[data-cy-setting="showCommentManagementButtons"]')?.checked,
+                showHomeSearchButton: !!root.querySelector('[data-cy-setting="showHomeSearchButton"]')?.checked,
+                htmlEnhancementEnabled: !!root.querySelector('[data-cy-setting="htmlEnhancementEnabled"]')?.checked,
+                canonicalDomainRedirectEnabled: !!root.querySelector('[data-cy-setting="canonicalDomainRedirectEnabled"]')?.checked
               })
             });
             var result = await response.json();
@@ -801,29 +909,15 @@ export default function init({ addHook, pluginId }: PluginInitContext): void {
     return await isHtmlEnhancementEnabled() ? protectInlineHtml(content) : content;
   }, 1);
 
-  // Alert icons remain independent. Re-check the opt-in switch before restoring
-  // HTML markers: content:content is async-capable, and user-authored text must
-  // never activate fragment restoration while the feature is disabled.
+  // Restore the five original inline SVG icons after Markdown sanitization.
+  // Keep HTML enhancement restoration independent and opt-in.
   addHook('content:content', pluginId, async (content: string) => {
-    const storedSettings = await getOption(getDb(env.DB), PLUGIN_OPTION_KEY);
-    const withAlertIcons = restoreMarkdownAlertIcons(content, parsePluginSettings(storedSettings).markdownAlertStyleSettings);
+    const withAlertIcons = restoreMarkdownAlertIcons(content);
     if (!withAlertIcons.includes('CYCYINLINE')) return withAlertIcons;
     return await isHtmlEnhancementEnabled()
       ? restoreInlineHtmlFragments(withAlertIcons)
       : withAlertIcons;
   }, 1);
-
-  // Emit Note presentation CSS in the document head so the five alert styles
-  // are available before the article body is painted, avoiding a late footer
-  // style update after the native theme styles have already rendered.
-  addHook('archive:header', pluginId, (html: string, extra?: {
-    options?: Record<string, unknown>;
-  }) => {
-    const options = extra?.options;
-    if (options?.theme !== THEME_ID) return html;
-    const settings = parsePluginSettings(options[PLUGIN_OPTION_KEY]);
-    return html + markdownAlertIconStyles(settings.markdownAlertStyleSettings);
-  }, 20);
 
   // Rehydrate only after Markdown sanitization; the feature is opt-in.
   addHook('archive:footer', pluginId, (html: string, extra?: {
@@ -935,7 +1029,7 @@ export default function init({ addHook, pluginId }: PluginInitContext): void {
     options?: Record<string, unknown>;
   }) => {
     if (extra?.options?.theme !== THEME_ID
-      || (extra?.title !== '设置外观' && extra?.title !== 'CY 功能显示')) return html;
+      || (extra?.title !== '设置外观' && extra?.title !== 'CY服务插件')) return html;
     return `${html}<style data-warm-cy-admin>${adminCss}</style>`;
   }, 20);
 
@@ -960,7 +1054,7 @@ export default function init({ addHook, pluginId }: PluginInitContext): void {
             item = document.createElement('li');
             const link = document.createElement('a');
             link.href = pluginPath;
-            link.textContent = 'CY 功能显示';
+            link.textContent = 'CY服务插件';
             item.append(link);
             submenu.append(item);
           }
@@ -977,7 +1071,7 @@ export default function init({ addHook, pluginId }: PluginInitContext): void {
             const item = document.createElement('li');
             const link = document.createElement('a');
             link.href = pluginPath;
-            link.textContent = 'CY 功能显示';
+            link.textContent = 'CY服务插件';
             item.append(link);
             const operate = mainMenu.querySelector(':scope > li.operate');
             if (operate) mainMenu.insertBefore(item, operate);
@@ -988,6 +1082,18 @@ export default function init({ addHook, pluginId }: PluginInitContext): void {
         if (window.location.pathname === '/admin/options-theme') {
           const form = document.querySelector('form[action="/admin/options-theme"]');
           form?.classList.add('warm-theme-config-form');
+          if (form && !form.previousElementSibling?.classList.contains('warm-theme-plugin-links')) {
+            const toolbar = document.createElement('div');
+            toolbar.className = 'cy-feature-links warm-theme-plugin-links';
+            const cyLink = document.createElement('a');
+            cyLink.href = pluginPath;
+            cyLink.textContent = 'CY服务插件';
+            const rehypeLink = document.createElement('a');
+            rehypeLink.href = '/admin/plugin-config?id=typecho-plugin-markdown-rehype';
+            rehypeLink.textContent = 'Markdown Rehype';
+            toolbar.append(cyLink, rehypeLink);
+            form.before(toolbar);
+          }
 
           if (form && form.dataset.warmCyLayoutApplied !== '1') {
             form.dataset.warmCyLayoutApplied = '1';
@@ -1095,13 +1201,13 @@ export default function init({ addHook, pluginId }: PluginInitContext): void {
           }
 
           const titleBar = document.querySelector('.typecho-page-title');
-          if (titleBar && !titleBar.querySelector('.warm-cy-settings-switch')) {
-            const link = document.createElement('a');
-            link.className = 'warm-cy-settings-switch';
-            link.href = pluginPath;
-            link.textContent = 'CY 功能显示';
-            titleBar.append(link);
+          if (titleBar && !titleBar.querySelector('.warm-cy-theme-version')) {
+            const version = document.createElement('span');
+            version.className = 'warm-cy-theme-version';
+            version.textContent = '主题版本：' + ${JSON.stringify(THEME_VERSION)};
+            titleBar.append(version);
           }
+
         }
       })();
     </script>`;
@@ -1117,6 +1223,7 @@ export default function init({ addHook, pluginId }: PluginInitContext): void {
     return featureSettingsPageHtml(
       extra.csrfToken || '',
       extra.options?.[PLUGIN_OPTION_KEY],
+      extra.options?.[OPTION_KEY],
     );
   }, 20);
 
@@ -1169,8 +1276,16 @@ export default function init({ addHook, pluginId }: PluginInitContext): void {
         showHomeSearchButton?: unknown;
         htmlEnhancementEnabled?: unknown;
         canonicalDomainRedirectEnabled?: unknown;
-        markdownAlertStyleSettings?: unknown;
+        pinnedIds?: unknown;
+        articleDeclarationHtml?: unknown;
+        footerCustomHtml?: unknown;
+        [key: string]: unknown;
       };
+      const movedStringKeys = ['pinnedIds', 'articleDeclarationHtml', 'footerCustomHtml', ...Array.from({ length: 10 }, (_, i) => { const n = String(i + 1).padStart(2, '0'); return [`linktxt${n}`, `links${n}`]; }).flat()];
+      if (movedStringKeys.some(key => values[key] !== undefined && typeof values[key] !== 'string')
+        || Array.from({ length: 10 }, (_, i) => `linkblank${String(i + 1).padStart(2, '0')}`).some(key => values[key] !== undefined && typeof values[key] !== 'boolean')) {
+        return { handled: true, response: json({ error: 'Invalid content settings' }, 400) };
+      }
       if (typeof values.showCommentManagementButtons !== 'boolean'
         || typeof values.showHomeSearchButton !== 'boolean'
         || typeof values.htmlEnhancementEnabled !== 'boolean'
@@ -1187,10 +1302,14 @@ export default function init({ addHook, pluginId }: PluginInitContext): void {
         canonicalDomainRedirectEnabled: values.canonicalDomainRedirectEnabled === undefined
           ? (isEnabled(current.canonicalDomainRedirectEnabled, false) ? '1' : '0')
           : (values.canonicalDomainRedirectEnabled ? '1' : '0'),
-        markdownAlertStyleSettings: values.markdownAlertStyleSettings !== undefined
-          ? normalizeMarkdownAlertStyleSettings(values.markdownAlertStyleSettings)
-          : normalizeMarkdownAlertStyleSettings(current.markdownAlertStyleSettings),
       };
+      for (const key of movedStringKeys) {
+        if (typeof values[key] === 'string') next[key] = values[key];
+      }
+      for (let i = 1; i <= 10; i++) {
+        const key = `linkblank${String(i).padStart(2, '0')}`;
+        if (typeof values[key] === 'boolean') next[key] = values[key] ? '1' : '0';
+      }
       await setOption(auth.db, PLUGIN_OPTION_KEY, JSON.stringify(next));
       return { handled: true, response: json({ success: true }) };
     }
@@ -1209,11 +1328,14 @@ export default function init({ addHook, pluginId }: PluginInitContext): void {
       return { handled: true, response: json({ error: 'Published post not found' }, 404) };
     }
 
-    const settings = parseSettings(auth.options[OPTION_KEY]);
+    const settings = {
+      ...parsePluginSettings(auth.options[OPTION_KEY]),
+      ...parsePluginSettings(auth.options[PLUGIN_OPTION_KEY]),
+    };
     const ids = parsePinnedIds(settings.pinnedIds).filter(id => id !== contentId);
     if (pinned) ids.unshift(contentId);
     settings.pinnedIds = ids.join(',');
-    await setOption(auth.db, OPTION_KEY, JSON.stringify(settings));
+    await setOption(auth.db, PLUGIN_OPTION_KEY, JSON.stringify(settings));
     return { handled: true, response: json({ success: true, pinned, pinnedIds: ids }) };
   }, 20);
 
@@ -1235,8 +1357,11 @@ export default function init({ addHook, pluginId }: PluginInitContext): void {
     });
     if (!content || (content.type !== 'post' && content.type !== 'page')) return payload;
 
-    const settings = parseSettings(auth.options[OPTION_KEY]);
-    const featureSettings = parsePluginSettings(auth.options[PLUGIN_OPTION_KEY]);
+    const settings = {
+      ...parsePluginSettings(auth.options[OPTION_KEY]),
+      ...parsePluginSettings(auth.options[PLUGIN_OPTION_KEY]),
+    };
+    const featureSettings = settings;
     const csrfToken = await generateSecurityToken(auth.options.secret, auth.user.authCode, auth.uid);
     return {
       ...payload,

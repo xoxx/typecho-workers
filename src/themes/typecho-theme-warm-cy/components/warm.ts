@@ -45,6 +45,9 @@ export interface WarmSettings {
   imageOptimizeParams: string;
   /** Query params appended to thumbnail URLs; falls back to imageOptimizeParams when empty. */
   thumbOptimizeParams: string;
+  markdownMathEngine: 'katex' | 'mathjax';
+  /** Rehype TOC is opt-in to avoid duplicating a theme-provided TOC. */
+  markdownTocEnabled: boolean;
 }
 
 export interface WarmCyFeatureSettings {
@@ -76,7 +79,10 @@ export function warmCyFeatureSettings(options: ThemeBaseProps['options']): WarmC
 
 export function warmSettings(options: ThemeBaseProps['options']): WarmSettings {
   const savedSettings = readSavedWarmSettings(options);
+  const pluginSettings = readSavedPluginSettings(options, 'typecho-plugin-warm-cy') || {};
   const settings = { ...DEFAULT_WARM_SETTINGS, ...(savedSettings || {}) };
+  const moved = (key: string) => Object.prototype.hasOwnProperty.call(pluginSettings, key) ? pluginSettings[key] : settings[key];
+  const rehypeSettings = readSavedPluginSettings(options, 'typecho-plugin-markdown-rehype');
   const legacyCommentMode = savedSettings?.commentInitialLoadMode;
   const componentLoadMode = Object.prototype.hasOwnProperty.call(savedSettings || {}, 'commentComponentLoadMode')
     ? settings.commentComponentLoadMode
@@ -84,18 +90,17 @@ export function warmSettings(options: ThemeBaseProps['options']): WarmSettings {
       ? 'dwell'
       : settings.commentComponentLoadMode;
   const imageOptimizeParams = normalizeOptimizeParams(settings.imageOptimizeParams);
-  const pinnedIds = parsePinnedIds(settings.pinnedIds);
-  const footerCustomHtml = typeof settings.footerCustomHtml === 'string'
-    ? settings.footerCustomHtml
-    : '';
-  const articleDeclarationHtml = typeof settings.articleDeclarationHtml === 'string'
-    ? settings.articleDeclarationHtml
-    : '';
+  const pinnedIds = parsePinnedIds(moved('pinnedIds'));
+  const footerCustomValue = moved('footerCustomHtml');
+  const declarationValue = moved('articleDeclarationHtml');
+  const footerCustomHtml = typeof footerCustomValue === 'string' ? footerCustomValue : '';
+  const articleDeclarationHtml = typeof declarationValue === 'string' ? declarationValue : '';
   const footerLinks = Array.from({ length: 10 }, (_, index) => {
     const suffix = String(index + 1).padStart(2, '0');
-    const text = typeof settings[`linktxt${suffix}`] === 'string' ? String(settings[`linktxt${suffix}`]).trim() : '';
-    const url = safeExternalUrl(settings[`links${suffix}`]);
-    const newWindowValue = settings[`linkblank${suffix}`];
+    const textValue = moved(`linktxt${suffix}`);
+    const text = typeof textValue === 'string' ? textValue.trim() : '';
+    const url = safeExternalUrl(moved(`links${suffix}`));
+    const newWindowValue = moved(`linkblank${suffix}`);
     return { text, url, newWindow: newWindowValue === true || newWindowValue === '1' || newWindowValue === 1 };
   }).filter(link => link.text && link.url);
   return {
@@ -108,6 +113,9 @@ export function warmSettings(options: ThemeBaseProps['options']): WarmSettings {
     commentInitialLoadMode: normalizeCommentInitialLoadMode(settings.commentInitialLoadMode),
     imageOptimizeParams,
     thumbOptimizeParams: normalizeOptimizeParams(settings.thumbOptimizeParams) || imageOptimizeParams,
+    markdownMathEngine: rehypeSettings?.mathEngine === 'mathjax' ? 'mathjax' : 'katex',
+    // Rehype TOC is controlled only by the Markdown Rehype plugin setting.
+    markdownTocEnabled: rehypeSettings?.tocEnabled === true || rehypeSettings?.tocEnabled === '1',
   };
 }
 
@@ -414,6 +422,22 @@ function readSavedWarmSettings(options: ThemeBaseProps['options']): Record<strin
   }
 }
 
+function readSavedPluginSettings(
+  options: ThemeBaseProps['options'],
+  pluginId: string,
+): Record<string, unknown> | null {
+  const raw = options?.[`plugin:${pluginId}`];
+  if (!raw) return null;
+  try {
+    const saved = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    return saved && typeof saved === 'object' && !Array.isArray(saved)
+      ? saved as Record<string, unknown>
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export function normalizeContinuousLoadMode(value: unknown): WarmContinuousLoadMode {
   if (value === 'auto-2') return 'auto-2';
   return value === 'infinite' ? value : 'manual';
@@ -594,21 +618,21 @@ export function prepareArticleToc(html: string): { html: string; items: WarmTocI
 
     const level = Number(tag.slice(1)) as 2 | 3;
     const existing = TOC_EXISTING_ID_RE.exec(attrs)?.slice(1).find(Boolean)?.trim();
-    let id = existing || generateWarmSlug(text) || `section-${items.length + 1}`;
+    let id = existing || generateWarmSlug(text) || 'section-' + (items.length + 1);
     const base = id;
     let suffix = 2;
-    while (used.has(id)) id = `${base}-${suffix++}`;
+    while (used.has(id)) id = base + '-' + suffix++;
     used.add(id);
     items.push({ id, text, level });
 
     if (existing) {
       if (existing === id) return match;
-      const rewrittenAttrs = attrs.replace(TOC_EXISTING_ID_RE, ` id="${escapeHtml(id)}"`);
-      return `<${tag}${rewrittenAttrs}>${inner}</${tag}>`;
+      const rewrittenAttrs = attrs.replace(TOC_EXISTING_ID_RE, ' id="' + escapeHtml(id) + '"');
+      return '<' + tag + rewrittenAttrs + '>' + inner + '</' + tag + '>';
     }
 
-    const suffixAttrs = attrs ? `${attrs} id="${escapeHtml(id)}"` : ` id="${escapeHtml(id)}"`;
-    return `<${tag}${suffixAttrs}>${inner}</${tag}>`;
+    const suffixAttrs = attrs ? attrs + ' id="' + escapeHtml(id) + '"' : ' id="' + escapeHtml(id) + '"';
+    return '<' + tag + suffixAttrs + '>' + inner + '</' + tag + '>';
   });
 
   if (items.length < TOC_MIN_ITEMS) return { html: nextHtml, items: [] };
@@ -627,6 +651,10 @@ function generateWarmSlug(title: string): string {
 
 function plainHeadingText(inner: string): string {
   return inner
+    .replace(/<a\b[^>]*class=["'][^"']*\bwarm-heading-anchor\b[^"']*["'][^>]*>[\s\S]*?<\/a>/gi, '')
+    .replace(/CYCYINLINE(?:BLOCK|CONTAINER|HTML)X[0-9a-f]+XEND/gi, ' ')
+    .replace(/CYCYINLINEATTRX[a-z][\w:-]*X[0-9a-f]+XEND/gi, ' ')
+    .replace(/CYCYCODESEGMENT\d+TOKEN/gi, ' ')
     .replace(/<[^>]*>/g, '')
     .replace(/&nbsp;/gi, ' ')
     .replace(/&amp;/gi, '&')
@@ -638,61 +666,7 @@ function plainHeadingText(inner: string): string {
     .trim();
 }
 
-/**
- * Normalize iframe attributes in article content.
- *
- * Only applies to iframe elements that have already passed
- * the application's HTML sanitizer.
- */
+/** Preserve iframe tags and all author-supplied attributes verbatim. */
 export function renderWarmIframes(html: string): string {
-  return html.replace(/<iframe\b([^>]*)>/gi, (match, rawAttributes: string) => {
-    const attributes = rawAttributes;
-
-    // Extract the original iframe source.
-    const srcMatch = attributes.match(/\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
-    const src = srcMatch?.[1] ?? srcMatch?.[2] ?? srcMatch?.[3] ?? '';
-
-    if (!src) return match;
-
-    // Restrict processing to the supported video providers.
-    let hostname = '';
-
-    try {
-      hostname = new URL(src, 'https://localhost').hostname.toLowerCase();
-    } catch {
-      return match;
-    }
-
-    const allowedHosts = [
-      'www.youtube.com',
-      'player.bilibili.com',
-      'player.vimeo.com',
-    ];
-
-    if (!allowedHosts.includes(hostname)) return match;
-
-    // Add or replace an iframe attribute without duplicating it.
-    const setAttribute = (source: string, name: string, value: string) => {
-      const pattern = new RegExp(`\\s${name}\\s*=\\s*("[^"]*"|'[^']*'|[^\\s>]+)`, 'i');
-
-      if (pattern.test(source)) {
-        return source.replace(pattern, ` ${name}="${value}"`);
-      }
-
-      return `${source} ${name}="${value}"`;
-    };
-
-    let result = attributes;
-
-    result = setAttribute(result, 'loading', 'lazy');
-    result = setAttribute(result, 'allowfullscreen', '');
-    result = setAttribute(
-      result,
-      'allow',
-      'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share',
-    );
-    result = setAttribute(result, 'title', '视频播放器');
-
-    return `<iframe${result}>`;
-  });
+  return html;
 }

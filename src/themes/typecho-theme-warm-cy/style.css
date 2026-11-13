@@ -805,6 +805,80 @@ body.warm-theme {
   margin: 2.9em 0;
 }
 
+/* WordPress/Gutenberg block alignment and common media wrappers. */
+.warm-prose .aligncenter,
+.warm-prose .wp-block-image.aligncenter,
+.warm-prose .wp-block-gallery.aligncenter {
+  display: block;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.warm-prose .alignleft {
+  float: left;
+  max-width: min(48%, 320px);
+  margin: .35em 1.5em 1em 0;
+}
+
+.warm-prose .alignright {
+  float: right;
+  max-width: min(48%, 320px);
+  margin: .35em 0 1em 1.5em;
+}
+
+.warm-prose .wp-block-image,
+.warm-prose .wp-block-gallery,
+.warm-prose .wp-block-embed,
+.warm-prose .wp-block-video {
+  max-width: 100%;
+}
+
+.warm-prose .wp-block-image img,
+.warm-prose .wp-block-gallery img,
+.warm-prose .wp-block-video video {
+  max-width: 100%;
+  height: auto;
+}
+
+.warm-prose .wp-block-image figcaption,
+.warm-prose .wp-block-gallery figcaption,
+.warm-prose .wp-caption-text {
+  margin: 10px auto 0;
+  color: var(--warm-faint);
+  font-size: 12px;
+  line-height: 1.7;
+  text-align: center;
+}
+
+.warm-prose .wp-block-columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.warm-prose .wp-block-column {
+  flex: 1 1 0;
+  min-width: min(100%, 220px);
+}
+
+.warm-prose .wp-block-separator {
+  width: min(100%, 7rem);
+  margin: 2.5em auto;
+  border: 0;
+  border-top: 1px solid var(--warm-border);
+}
+
+.warm-prose .wp-block-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.warm-prose .wp-block-table table {
+  width: 100%;
+  margin: 1.5em 0;
+}
+
 .warm-prose figure img {
   display: block;
   max-width: 100%;
@@ -821,6 +895,27 @@ body.warm-theme {
   text-align: center;
 }
 
+.warm-prose details {
+  margin: 1.5em 0;
+  padding: .9em 1.1em;
+  border: 1px solid var(--warm-border);
+  background: var(--warm-surface);
+}
+
+.warm-prose details > summary {
+  color: var(--warm-text);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.warm-prose details[open] > summary {
+  margin-bottom: .8em;
+}
+
+.warm-prose details > :not(summary):first-of-type {
+  margin-top: .5em;
+}
+
 .warm-prose blockquote,
 .warm-note__content blockquote {
   margin: 1.7em 0;
@@ -831,6 +926,17 @@ body.warm-theme {
   font-size: 1.08em;
   letter-spacing: .005em;
   background: #f9f9f8;
+}
+
+.warm-prose blockquote > strong:first-child {
+  display: block;
+  margin-bottom: .65em;
+  color: #403b35;
+  font-family: var(--warm-font);
+  font-size: .78em;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
 }
 
 .warm-prose blockquote p,
@@ -876,12 +982,12 @@ body.warm-theme {
   line-height: 1.5;
   letter-spacing: 0;
 }
-/* The fixed upstream renderer supplies a plain alert title; restore the
-   Warm CY icon treatment in the theme without changing core Markdown HTML. */
-.warm-prose .markdown-alert-title::before,
-.warm-note__content .markdown-alert-title::before {
-  content: "ⓘ";
-  display: inline-flex;
+/* Render the alert glyph emitted by the Rehype pipeline directly.
+   Do not hide it: the title pseudo-element is intentionally disabled. */
+.warm-prose .markdown-alert-title .markdown-alert-icon,
+.warm-note__content .markdown-alert-title .markdown-alert-icon {
+  display: inline-flex !important;
+  flex: 0 0 18px;
   align-items: center;
   justify-content: center;
   width: 18px;
@@ -894,40 +1000,12 @@ body.warm-theme {
   line-height: 1;
 }
 
-.warm-prose .markdown-alert[data-alert="TIP" i] .markdown-alert-title::before,
-.warm-note__content .markdown-alert[data-alert="TIP" i] .markdown-alert-title::before {
-  content: "✦";
+.warm-prose .markdown-alert-title::before,
+.warm-note__content .markdown-alert-title::before {
+  content: none !important;
+  display: none !important;
 }
 
-.warm-prose .markdown-alert[data-alert="IMPORTANT" i] .markdown-alert-title::before,
-.warm-note__content .markdown-alert[data-alert="IMPORTANT" i] .markdown-alert-title::before {
-  content: "❗";
-}
-
-.warm-prose .markdown-alert[data-alert="WARNING" i] .markdown-alert-title::before,
-.warm-note__content .markdown-alert[data-alert="WARNING" i] .markdown-alert-title::before {
-  content: "⚠";
-}
-
-.warm-prose .markdown-alert[data-alert="CAUTION" i] .markdown-alert-title::before,
-.warm-note__content .markdown-alert[data-alert="CAUTION" i] .markdown-alert-title::before {
-  content: "⛔";
-}
-
-/* Markdown Alerts 标题图标 */
-.warm-prose .markdown-alert-title .markdown-alert-icon,
-.warm-note__content .markdown-alert-title .markdown-alert-icon {
-  display: inline-block !important;
-  width: 18px !important;
-  height: 18px !important;
-  min-width: 18px !important;
-  max-width: 18px !important;
-  min-height: 18px !important;
-  max-height: 18px !important;
-  flex: 0 0 18px !important;
-  margin: 0 8px 0 0 !important;
-  vertical-align: middle;
-}
 /* 提示框正文 */
 .warm-prose .markdown-alert p,
 .warm-note__content .markdown-alert p {
@@ -961,7 +1039,9 @@ body.warm-theme {
 
 /* IMPORTANT - 紫色 */
 .warm-prose .markdown-alert[data-alert="IMPORTANT" i],
-.warm-note__content .markdown-alert[data-alert="IMPORTANT" i] {
+.warm-note__content .markdown-alert[data-alert="IMPORTANT" i],
+.warm-prose .markdown-alert-important,
+.warm-note__content .markdown-alert-important {
   border-color: #e9d5ff;
   border-left-color: #c084fc;
   background: #faf5ff;
@@ -979,7 +1059,9 @@ body.warm-theme {
 
 /* CAUTION - 红色 */
 .warm-prose .markdown-alert[data-alert="CAUTION" i],
-.warm-note__content .markdown-alert[data-alert="CAUTION" i] {
+.warm-note__content .markdown-alert[data-alert="CAUTION" i],
+.warm-prose .markdown-alert-caution,
+.warm-note__content .markdown-alert-caution {
   border-color: #fecaca;
   border-left-color: #f87171;
   background: #fef2f2;
@@ -989,6 +1071,13 @@ body.warm-theme {
 /* 五种提示框标题继承对应颜色 */
 .warm-prose .markdown-alert-title,
 .warm-note__content .markdown-alert-title {
+  color: inherit;
+}
+
+/* Keep emphasized text throughout an alert aligned with its variant color.
+   Inline HTML styles still take precedence when an author supplies them. */
+.warm-prose .markdown-alert strong,
+.warm-note__content .markdown-alert strong {
   color: inherit;
 }
 
@@ -1010,7 +1099,9 @@ body.warm-theme {
 }
 
 .dark .warm-prose .markdown-alert[data-alert="IMPORTANT" i],
-.dark .warm-note__content .markdown-alert[data-alert="IMPORTANT" i] {
+.dark .warm-note__content .markdown-alert[data-alert="IMPORTANT" i],
+.dark .warm-prose .markdown-alert-important,
+.dark .warm-note__content .markdown-alert-important {
   border-color: #581c87;
   border-left-color: #c084fc;
   background: #581c87;
@@ -1026,7 +1117,9 @@ body.warm-theme {
 }
 
 .dark .warm-prose .markdown-alert[data-alert="CAUTION" i],
-.dark .warm-note__content .markdown-alert[data-alert="CAUTION" i] {
+.dark .warm-note__content .markdown-alert[data-alert="CAUTION" i],
+.dark .warm-prose .markdown-alert-caution,
+.dark .warm-note__content .markdown-alert-caution {
   border-color: #7f1d1d;
   border-left-color: #f87171;
   background: #7f1d1d;
@@ -1044,8 +1137,8 @@ body.warm-theme {
 
 .warm-prose pre {
   overflow-x: auto;
-  margin: 2.5em 0;
-  padding: 30px 34px;
+  margin: 1.5em 0;
+  padding: 18px 20px;
   background: var(--warm-surface);
   color: #403d39;
   font-family: var(--warm-mono);
@@ -1054,12 +1147,32 @@ body.warm-theme {
   tab-size: 2;
 }
 
+/* Code titles are emitted by remark-flexible-code-titles as a semantic strong node. */
+.warm-prose strong:has(+ pre) {
+  display: block;
+  margin: 1.5em 0 0;
+  padding: 6px 12px;
+  background: var(--warm-surface);
+  color: var(--warm-faint);
+  font-family: var(--warm-mono);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.warm-prose strong + pre {
+  margin-top: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--warm-border);
+}
+
 .warm-prose pre code {
   padding: 0;
   background: transparent;
   color: inherit;
   font-size: inherit;
 }
+
 
 .warm-prose table {
   min-width: stretch;
@@ -1110,9 +1223,20 @@ body.warm-theme {
   display: none;
 }
 
+.warm-toc__inner {
+  max-height: min(68vh, calc(100vh - 140px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.warm-toc__inner::-webkit-scrollbar {
+  display: none;
+}
+
 .warm-toc__list {
   margin: 0;
-  padding: 0;
+  padding: 32vh 0;
   list-style: none;
 }
 
@@ -1159,8 +1283,7 @@ body.warm-theme {
 }
 
 .warm-toc:hover .warm-toc__label,
-.warm-toc:focus-within .warm-toc__label,
-.warm-toc__link.is-active .warm-toc__label {
+.warm-toc:focus-within .warm-toc__label {
   max-width: 11.5em;
   margin-left: 10px;
   overflow: hidden;
@@ -1812,7 +1935,7 @@ body.warm-theme {
   }
 
   .warm-prose pre {
-    padding: 24px 28px;
+    padding: 14px 16px;
     font-size: 13px;
   }
 
@@ -2535,4 +2658,109 @@ body.warm-theme {
   .warm-search-dialog__panel { padding: 26px 18px 20px; }
   .warm-search-form { gap: 8px; }
   .warm-search-submit { min-width: 82px; padding-inline: 12px; }
+}
+
+
+/* Rehype Markdown: math, code highlighting and browser-rendered Mermaid. */
+.warm-prose .katex-display,
+.warm-prose .mathjax-display {
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: .75em 0;
+  line-height: normal;
+}
+.warm-prose .katex { font-size: 1.05em; }
+/* MathJax SVG glyphs and tall operators need a larger vertical safety area
+   inside the horizontally scrollable display-math viewport. */
+.warm-prose .mathjax-display { padding-block: 1.25em; }
+.warm-prose .mathjax-inline { line-height: normal; }
+.warm-prose .mathjax-display mjx-container[display="true"] { margin: 0 !important; }
+.warm-prose pre code.hljs { display: block; overflow-x: auto; padding: 0; }
+.warm-prose code.hljs { padding: .15em .35em; border-radius: 4px; }
+.warm-prose .hljs-comment, .warm-prose .hljs-quote { color: #8a918d; font-style: italic; }
+.warm-prose .hljs-keyword, .warm-prose .hljs-selector-tag, .warm-prose .hljs-literal { color: #9b5bce; }
+.warm-prose .hljs-string, .warm-prose .hljs-attr { color: #27865a; }
+.warm-prose .hljs-number, .warm-prose .hljs-symbol { color: #c07835; }
+.warm-prose .hljs-title, .warm-prose .hljs-function { color: #3979b8; }
+.warm-prose pre.mermaid_default,
+.warm-prose pre.mermaid_dark {
+  max-width: 100%;
+  margin: 1.5rem 0;
+  padding: 1rem 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  background: transparent;
+  text-align: center;
+  white-space: normal;
+}
+
+.warm-prose pre.mermaid_default svg,
+.warm-prose pre.mermaid_dark svg {
+  display: block;
+  width: max-content;
+  max-width: none;
+  height: auto;
+  margin-inline: auto;
+}
+
+/*
+ * Mermaid measures SVG geometry synchronously while rendering. The global
+ * reduced-motion rule above applies a non-zero transition duration to every
+ * theme element; transitions on SVG nodes/paths can therefore inflate the
+ * measured viewBox before those transitions settle. Keep the entire diagram
+ * subtree geometry immediate, not only foreignObject labels.
+ */
+.warm-prose pre.mermaid_default svg,
+.warm-prose pre.mermaid_default svg *,
+.warm-prose pre.mermaid_default svg *::before,
+.warm-prose pre.mermaid_default svg *::after,
+.warm-prose pre.mermaid_dark svg,
+.warm-prose pre.mermaid_dark svg *,
+.warm-prose pre.mermaid_dark svg *::before,
+.warm-prose pre.mermaid_dark svg *::after {
+  transition: none !important;
+}
+
+/* Rehype heading permalinks: keep the anchor available without making the title noisy. */
+.warm-prose .warm-heading-anchor {
+  display: none !important;
+  margin-left: .45em;
+  color: var(--warm-faint);
+  font-size: .62em;
+  font-weight: 400;
+  line-height: 1;
+  opacity: .5;
+  text-decoration: none;
+  vertical-align: middle;
+  transition: color 160ms ease, opacity 160ms ease;
+}
+
+.warm-prose h2:hover .warm-heading-anchor,
+.warm-prose h3:hover .warm-heading-anchor,
+.warm-prose h4:hover .warm-heading-anchor,
+.warm-prose .warm-heading-anchor:hover {
+  color: var(--warm-accent);
+  opacity: 1;
+  text-decoration: none;
+}
+
+/* Rin-style dual Mermaid variants: keep both source nodes in the document and
+   switch visibility with the active page theme. */
+.warm-prose pre.mermaid_default {
+  display: block;
+}
+.warm-prose pre.mermaid_dark {
+  display: none;
+}
+html.dark .warm-prose pre.mermaid_default,
+body.dark .warm-prose pre.mermaid_default {
+  display: none;
+}
+html.dark .warm-prose pre.mermaid_dark,
+body.dark .warm-prose pre.mermaid_dark {
+  display: block;
 }

@@ -51,7 +51,7 @@ export function optimizeContentImages(html: string, params: string, siteUrl: str
     const fragment = (src.split('#', 2)[1] || '').replace(/&amp;/gi, '&');
 
     const getDimension = (name: 'width' | 'height'): string | null => {
-      const result = fragment.match(new RegExp(`(?:^|[&;])${name}=(\\d+)(?=[&;]|$)`, 'i'));
+      const result = fragment.match(new RegExp('(?:^|[&;])' + name + '=(\\d+)(?=[&;]|$)', 'i'));
       if (!result) return null;
       const value = Number(result[1]);
       return Number.isInteger(value) && value > 0 && value <= 10000 ? String(value) : null;
@@ -59,18 +59,39 @@ export function optimizeContentImages(html: string, params: string, siteUrl: str
 
     let updated = tag;
     let attributes = '';
+    const recoveredStyles: string[] = [];
     for (const name of ['width', 'height'] as const) {
       const dimension = getDimension(name);
-      const hasAttribute = new RegExp(`\\s${name}\\s*=`, 'i').test(updated);
-      if (dimension && !hasAttribute) attributes += ` ${name}="${dimension}"`;
+      const hasAttribute = new RegExp('\\s' + name + '\\s*=', 'i').test(updated);
+      if (dimension && !hasAttribute) {
+        attributes += ' ' + name + '="' + dimension + '"';
+        recoveredStyles.push(name + ':' + dimension + 'px');
+      }
     }
-    if (attributes) updated = updated.replace(/\/?>$/, (ending: string) => `${attributes}${ending}`);
+    if (attributes) updated = updated.replace(/\/?>$/, (ending: string) => attributes + ending);
+
+    if (recoveredStyles.length) {
+      const styleMatch = updated.match(/\sstyle\s*=\s*(["'])(.*?)\1/i);
+      if (styleMatch) {
+        const existing = styleMatch[2];
+        const additions = recoveredStyles.filter(rule => {
+          const property = rule.slice(0, rule.indexOf(':'));
+          return !new RegExp('(?:^|;)\\s*' + property + '\\s*:', 'i').test(existing);
+        });
+        if (additions.length) {
+          const merged = [existing.replace(/;\s*$/, ''), ...additions].filter(Boolean).join(';');
+          updated = updated.replace(styleMatch[0], ' style=' + styleMatch[1] + merged + styleMatch[1]);
+        }
+      } else {
+        updated = updated.replace(/\/?>$/, (ending: string) => ' style="' + recoveredStyles.join(';') + '"' + ending);
+      }
+    }
 
     if (clean) {
       const optimized = optimizeImageUrl(src, clean, siteUrl);
       if (optimized !== src) {
         updated = updated.replace(/(\ssrc\s*=\s*)(["'])(.*?)\2/i,
-          (_match: string, prefix: string, quote: string) => `${prefix}${quote}${optimized}${quote}`);
+          (_match: string, prefix: string, quote: string) => prefix + quote + optimized + quote);
       }
     }
     return updated;

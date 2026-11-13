@@ -37,7 +37,15 @@ describe('Warm CY image helpers', () => {
   it('recovers dimensions from the fragment without overriding explicit attributes', () => {
     const html = '<img src="/usr/uploads/photo.jpg#width=640&height=360" width="320">';
     expect(optimizeContentImages(html, 'quality=80', 'https://oook.top'))
-      .toBe('<img src="/usr/uploads/photo.jpg?quality=80#width=640&height=360" width="320" height="360">');
+      .toBe('<img src="/usr/uploads/photo.jpg?quality=80#width=640&height=360" width="320" height="360" style="height:360px">');
+  });
+
+  it('applies fragment dimensions as inline display sizes, including an ampersand-prefixed fragment', () => {
+    const html = '<img src="https://img.347777.xyz/file/icon.svg#&width=48&height=48" alt="icon">';
+    const output = optimizeContentImages(html, '', 'https://oook.top');
+    expect(output).toContain('width="48"');
+    expect(output).toContain('height="48"');
+    expect(output).toContain('style="width:48px;height:48px"');
   });
 
   it('can recover dimensions when optimization is disabled', () => {
@@ -45,7 +53,7 @@ describe('Warm CY image helpers', () => {
       '<img src="/usr/uploads/photo.jpg#width=640&height=360">',
       '',
       'https://oook.top',
-    )).toBe('<img src="/usr/uploads/photo.jpg#width=640&height=360" width="640" height="360">');
+    )).toBe('<img src="/usr/uploads/photo.jpg#width=640&height=360" width="640" height="360" style="width:640px;height:360px">');
   });
 
   it('leaves non-image markup unchanged', () => {

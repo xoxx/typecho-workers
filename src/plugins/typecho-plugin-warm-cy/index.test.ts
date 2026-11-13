@@ -99,38 +99,8 @@ describe('typecho-plugin-warm-cy', () => {
     expect(mocks.registerPluginAdminPath).toHaveBeenCalledWith(SETTINGS_API_PATH);
     expect([...hooks.keys()].sort()).toEqual([
       'admin:footer', 'admin:header', 'admin:page',
-      'archive:footer', 'archive:header', 'comment:list', 'content:content', 'content:markdown', 'route:request',
+      'archive:footer', 'comment:list', 'content:content', 'content:markdown', 'route:request',
     ]);
-  });
-
-  it('emits five-Note presentation CSS in the document head before the body is painted', () => {
-    const hooks = collectHooks();
-    const renderHead = hooks.get('archive:header')!;
-    const options = {
-      theme: 'typecho-theme-warm-cy',
-      [PLUGIN_OPTION_KEY]: JSON.stringify({
-        markdownAlertStyleSettings: {
-          enabled: true,
-          types: {
-            NOTE: { background: '#123456' },
-            TIP: { background: '#234567' },
-            IMPORTANT: { background: '#345678' },
-            WARNING: { background: '#456789' },
-            CAUTION: { background: '#56789a' },
-          },
-          icon: { visible: true, size: 22, gap: 4 },
-        },
-      }),
-    };
-    const html = renderHead('<meta charset="utf-8">', { options });
-    expect(html).toContain('<style data-cy-markdown-alert-icons>');
-    for (const color of ['#123456', '#234567', '#345678', '#456789', '#56789a']) {
-      expect(html).toContain('background:' + color + '!important');
-    }
-    expect(html).toContain('width:22px!important');
-    expect(html).toContain('margin-right:4px!important');
-    expect(renderHead('<head>', { options: { ...options, theme: 'another-theme' } })).toBe('<head>');
-    expect(hooks.get('archive:footer')!('', { options })).not.toContain('data-cy-markdown-alert-icons');
   });
 
   it('shows the current CY plugin version and the agreed feature switches', () => {
@@ -140,19 +110,58 @@ describe('typecho-plugin-warm-cy', () => {
       csrfToken: 'test-token',
       options: { [PLUGIN_OPTION_KEY]: '{}' },
     });
-    expect(html).toContain('CY 插件版本：2026.11.07.21.00');
+    expect(html).toContain('<strong>CY服务插件</strong>');
+    expect(html).toContain('版本：2026.11.10.21.03');
+    expect(html).toContain('返回主题设置');
     expect(html).toContain('评论区管理按键');
     expect(html).toContain('首页搜索按键');
     expect(html).toContain('正文 HTML / CSS / JavaScript 增强');
+    expect(html).toContain('class="cy-feature-warning"');
     expect(html).toContain('访问备用域名时自动跳转到主域名');
+    expect(html).not.toContain('五种 Note 与图标样式');
     expect(html).toContain('data-cy-setting="canonicalDomainRedirectEnabled"');
+  });
+
+  it('renders the four migrated settings as native Typecho option rows and reads legacy values', () => {
+    const handler = collectHooks().get('admin:page')!;
+    const legacy = {
+      pinnedIds: '8,12',
+      linktxt01: '关于本站',
+      links01: 'https://example.com/about',
+      linkblank01: true,
+      articleDeclarationHtml: '<strong>声明</strong>',
+      footerCustomHtml: '<span>页脚</span>',
+    };
+    const html = handler('', {
+      slug: 'cy-companion',
+      csrfToken: 'test-token',
+      options: { [PLUGIN_OPTION_KEY]: '{}', [OPTION_KEY]: JSON.stringify(legacy) },
+    });
+    expect(html.match(/class="typecho-option"/g)?.length).toBe(33);
+    expect(html).toContain('id="pinnedIds-0-1" name="pinnedIds" type="text" class="text"');
+    expect(html).toContain('id="typecho-option-item-pinnedIds-0"');
+    expect(html).toContain('id="articleDeclarationHtml-0-34"');
+    expect(html).toContain('id="typecho-option-item-articleDeclarationHtml-33"');
+    expect(html).toContain('id="footerCustomHtml-0-35"');
+    expect(html).toContain('id="typecho-option-item-footerCustomHtml-34"');
+    expect(html).toContain('value="8,12"');
+    expect(html).toContain('id="linktxt01-0-2"');
+    expect(html).toContain('value="https://example.com/about"');
+    expect(html).toContain('id="linkblank01-0-4" name="linkblank01" data-cy-setting="linkblank01" value="1" checked');
+    expect(html).toContain('&lt;strong&gt;声明&lt;/strong&gt;');
+    expect(html).toContain('&lt;span&gt;页脚&lt;/span&gt;');
+    expect(html).toContain('ul.typecho-option:has(textarea[name="articleDeclarationHtml"])');
+    expect(html).not.toContain('cy-feature-card"><h2>首页置顶文章 ID');
+    expect(html).not.toContain('cy-feature-link-row');
   });
 
   it('provides a fallback CY feature-settings entry in the admin navigation', () => {
     const handler = collectHooks().get('admin:footer')!;
     const html = handler('', { options: { theme: 'typecho-theme-warm-cy' } });
     expect(html).toContain("const mainMenu = document.querySelector('.typecho-head-nav > nav > menu')");
-    expect(html).toContain("link.textContent = 'CY 功能显示'");
+    expect(html).toContain("link.textContent = 'CY服务插件'");
+    expect(html).toContain("rehypeLink.textContent = 'Markdown Rehype'");
+    expect(html).toContain("version.textContent = '主题版本：' + THEME_VERSION");
     expect(html).toContain("link.href = pluginPath");
   });
 
@@ -188,7 +197,7 @@ describe('typecho-plugin-warm-cy', () => {
     expect(await handler(source)).toBe(source);
   });
 
-  it('restores all five Markdown Alert SVG icons after the core sanitizer', async () => {
+  it('restores exactly one theme icon for each Markdown Alert title', async () => {
     const restore = collectHooks().get('content:content')!;
     const labels = ['NOTE', 'TIP', 'IMPORTANT', 'WARNING', 'CAUTION'];
     const html = labels.map(label =>
@@ -196,15 +205,9 @@ describe('typecho-plugin-warm-cy', () => {
       + '<p class="markdown-alert-title">' + label + '</p><p>正文</p></blockquote>',
     ).join('');
     const restored = await restore(html);
-    expect((restored.match(/class="markdown-alert-icon"/g) || []).length).toBe(5);
-    expect((restored.match(/cy-markdown-alert-has-icon/g) || []).length).toBe(5);
-    expect(restored).toContain('viewBox="0 0 16 16"');
-    expect(restored).toContain('fill="currentColor"');
-    expect(restored).toContain('M0 8a8 8 0 1 1 16 0');
-    expect(restored).toContain('M8 1.5c-2.363');
-    expect(restored).toContain('M0 1.75C0 .784');
-    expect(restored).toContain('M6.457 1.047');
-    expect(restored).toContain('M4.47.22');
+    expect(restored.match(/<svg class="markdown-alert-icon"/g)).toHaveLength(labels.length);
+    expect(restored.match(/cy-markdown-alert-has-icon/g)).toHaveLength(labels.length);
+    for (const label of labels) expect(restored).toContain('>' + label + '</p>');
   });
 
   it('protects inline style/script/SVG and style attributes while leaving code examples intact', async () => {
@@ -506,17 +509,6 @@ describe('typecho-plugin-warm-cy', () => {
       showHomeSearchButton: '0',
       htmlEnhancementEnabled: '1',
       canonicalDomainRedirectEnabled: '1',
-      markdownAlertStyleSettings: {
-        enabled: true,
-        types: expect.objectContaining({
-          NOTE: expect.objectContaining({ background: expect.any(String) }),
-          TIP: expect.objectContaining({ background: expect.any(String) }),
-          IMPORTANT: expect.objectContaining({ background: expect.any(String) }),
-          WARNING: expect.objectContaining({ background: expect.any(String) }),
-          CAUTION: expect.objectContaining({ background: expect.any(String) }),
-        }),
-        icon: expect.objectContaining({ visible: true }),
-      },
     });
   });
 
@@ -733,11 +725,13 @@ describe('typecho-plugin-warm-cy', () => {
 
     expect(result.response.status).toBe(200);
     expect(await result.response.json()).toEqual({ success: true, pinned: true, pinnedIds: [12, 8, 20] });
-    expect(mocks.setOption).toHaveBeenCalledWith(
-      context.db,
-      OPTION_KEY,
-      JSON.stringify({ pinnedIds: '12,8,20', footerCustomHtml: '<strong>keep</strong>' }),
-    );
+    const savedPluginOptions = JSON.parse(mocks.setOption.mock.calls[0][2] as string);
+    expect(mocks.setOption).toHaveBeenCalledWith(context.db, PLUGIN_OPTION_KEY, expect.any(String));
+    expect(savedPluginOptions).toEqual({
+      existingPluginSetting: 'keep',
+      pinnedIds: '12,8,20',
+      footerCustomHtml: '<strong>keep</strong>',
+    });
   });
 
   it('does not expose comment management metadata to anonymous visitors', async () => {
