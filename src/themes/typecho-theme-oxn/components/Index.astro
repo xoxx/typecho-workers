@@ -1,16 +1,17 @@
 ---
 import { env } from 'cloudflare:workers';
 import { getDb, schema } from 'typecho/db';
-import type { NoteListItem } from 'typecho-plugin-notes';
-import { optimizeContentImages } from './warm-image';
+import { getNotesStreamForTheme, type NoteListItem } from 'typecho-plugin-notes';
+import { createContext } from '@/lib/context';
 import { and, eq, inArray, lte } from 'drizzle-orm';
 import type { ThemeIndexProps, PostListItem } from '@/lib/theme-props';
-import { buildCategoryLink, buildPermalink, renderContentExcerpt } from 'typecho/plugin-sdk';
+import { buildCategoryLink } from '@/lib/content';
+import { buildPermalink, renderContentExcerpt } from 'typecho/plugin-sdk';
 import NotFound from './NotFound.astro';
 import WarmShell from './WarmShell.astro';
 import WarmStreamPagination from './WarmStreamPagination.astro';
 import WarmNoteMedia from './WarmNoteMedia.astro';
-import { formatWarmDate, plainExcerpt, warmSettings } from './warm';
+import { formatWarmDate, plainExcerpt, warmSettings, warmOptimizeContentImages } from './warm';
 
 type Props = ThemeIndexProps;
 type WarmPostItem = {
@@ -21,6 +22,7 @@ type WarmPostItem = {
   excerpt: string;
   created: number;
   categories: PostListItem['categories'];
+  pinned?: boolean;
 };
 type WarmNoteItem = NoteListItem & { type: 'note' };
 
@@ -57,8 +59,8 @@ let hasPrev = pagination.hasPrev;
 let hasNext = pagination.hasNext;
 
 if (notesEnabled && stream !== 'posts') {
-  const notesDb = getDb(env.DB);
-  const { getNotesStreamForTheme } = await import('typecho-plugin-notes');
+  const noteContext = await createContext(Astro.locals, Astro.request);
+  const notesDb = noteContext.db ?? getDb(env.DB);
   const result = await getNotesStreamForTheme(
     notesDb,
     stream,
@@ -127,14 +129,13 @@ const heading = stream === 'notes' ? '笔记' : stream === 'posts' ? '文章' : 
 const settings = warmSettings(options);
 const baseUrl = `${urls.siteUrl.replace(/\/$/, '')}/`;
 
-// 首页置顶来自本主题的独立外观配置。直接按 ID 查询数据库，不能只在当前页 posts 上排序，
-// 否则原本位于后续页的文章无法出现在首页顶部。
-const isHomeListing = Astro.url.pathname === '/' && !topic && !requestedStream;
+// 首页置顶直接按 ID 查询数据库，避免只调整当前页数据导致后续页文章无法置顶。
+const isHomeListing = (Astro.url.pathname === '/' || /^\/page\/\d+\/?$/.test(Astro.url.pathname)) && !topic && !requestedStream;
 const isHomepage = isHomeListing && pagination.currentPage === 1;
 const pinnedIds = isHomeListing ? settings.pinnedIds : [];
 const pinnedIdSet = new Set(pinnedIds);
 let pinnedItems: WarmPostItem[] = [];
-if (pinnedIds.length > 0) {
+if (isHomepage && pinnedIds.length > 0) {
   const pinDb = getDb(env.DB);
   const now = Math.floor(Date.now() / 1000);
   const pinnedRows = await pinDb.select({
@@ -176,22 +177,28 @@ if (pinnedIds.length > 0) {
   }
   pinnedItems = validIds.map(cid => {
     const row = rowById.get(cid)!;
+    const permalink = buildPermalink(
+      { cid, slug: row.slug, type: row.type, created: row.created },
+      urls.siteUrl,
+      options.permalinkPattern as string | undefined,
+    );
     return {
       type: 'post' as const,
       cid,
       title: row.title || '',
-      permalink: buildPermalink({ cid, slug: row.slug, type: row.type, created: row.created }, urls.siteUrl, options.permalinkPattern as string | undefined),
-      excerpt: plainExcerpt(renderContentExcerpt(row.text || '', ' - 阅读剩余部分 -', buildPermalink({ cid, slug: row.slug, type: row.type, created: row.created }, urls.siteUrl, options.permalinkPattern as string | undefined))),
+      permalink,
+      excerpt: plainExcerpt(renderContentExcerpt(row.text || '', ' - 阅读剩余部分 -', permalink)),
       created: Number(row.created || 0),
       categories: categoryById.get(cid) || [],
+      pinned: true,
     };
   });
 }
-// 排除所有页普通/混合流中的置顶文章，防止加载更多时重复；第一页再按设置顺序置顶。
-items = items.filter(item => item.type !== 'post' || !pinnedIdSet.has(Number(item.cid)));
-if (isHomepage && currentPage === 1 && pinnedItems.length > 0) {
+// 首页第一页按设置顺序显示置顶文章；普通分页保留原始结果，由隐藏判定避免重复显示。
+if (isHomepage && pinnedItems.length > 0) {
   items = [...pinnedItems, ...items];
 }
+
 const pageUrl = (page: number) => {
   const params = new URLSearchParams();
   if (stream !== 'mixed') params.set('stream', stream);
@@ -232,7 +239,7 @@ if (isNotesStreamOutOfRange) Astro.response.status = 404;
     </div>
   )}
 
-  <div class="warm-stream" data-warm-stream>
+  <div class="warm-stream" data-warm-stream data-warm-pinned-ids={isHomeListing ? pinnedIds.join(',') : undefined}>
     {items.length === 0 ? (
       <section class="warm-empty">
         <h1>这里还很安静</h1>
@@ -246,7 +253,7 @@ if (isNotesStreamOutOfRange) Astro.response.status = 404;
           <span aria-hidden="true">·</span>
           <time datetime={new Date(item.created * 1000).toISOString()}>{formatWarmDate(item.created, options.postDateFormat, options.timezone, true)}</time>
         </div>
-        <div class="warm-note__content" set:html={optimizeContentImages(item.html, settings.imageOptimizeParams, urls.siteUrl)} />
+        <div class="warm-note__content" set:html={warmOptimizeContentImages(item.html, settings.thumbOptimizeParams, urls.siteUrl)} />
         <WarmNoteMedia
           note={item}
           optimizeParams={settings.imageOptimizeParams}
@@ -255,15 +262,15 @@ if (isNotesStreamOutOfRange) Astro.response.status = 404;
         />
       </article>
     ) : (
-      <article class="warm-stream-item warm-post-card" data-content-type="post">
-        <a class="warm-stream-item__hit" href={item.permalink} data-no-instant aria-label={`阅读：${item.title}`}></a>
+      <article class="warm-stream-item warm-post-card" data-content-type="post" data-post-id={item.cid} hidden={!item.pinned && isHomeListing && pinnedIdSet.has(Number(item.cid))}>
+        <a class="warm-stream-item__hit" href={item.permalink} aria-label={`阅读：${item.title}`}></a>
         <div class="warm-item-meta">
           <time datetime={new Date(item.created * 1000).toISOString()}>{formatWarmDate(item.created, options.postDateFormat, options.timezone)}</time>
           {item.categories[0] ? <span aria-hidden="true">·</span> : null}
           {item.categories[0] ? <a class="warm-category" href={item.categories[0].permalink}>{item.categories[0].name}</a> : null}
-          {isHomepage && pinnedIdSet.has(Number(item.cid)) && <span class="warm-pinned-badge" aria-label="置顶文章"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2.5h6l-.7 3.1 2.2 2.2v1H8.8v4.7l-.8.8-.8-.8V8.8H3.5v-1l2.2-2.2L5 2.5Z" fill="currentColor"/></svg>置顶</span>}
+          {item.pinned && <span class="warm-pinned-badge" aria-label="置顶文章"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2.5h6l-.7 3.1 2.2 2.2v1H8.8v4.7l-.8.8-.8-.8V8.8H3.5v-1l2.2-2.2L5 2.5Z" fill="currentColor"/></svg>置顶</span>}
         </div>
-        <h2><a href={item.permalink} data-no-instant>{item.title}</a></h2>
+        <h2><a href={item.permalink}>{item.title}</a></h2>
         {item.excerpt && <p>{item.excerpt}</p>}
       </article>
     ))}

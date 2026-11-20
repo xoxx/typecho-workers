@@ -7,9 +7,17 @@ interface Props {
   initialLoadMode: WarmCommentInitialLoadMode;
   /** Seconds the submit button stays locked after a submit attempt (0 disables). */
   cooldownSeconds?: number;
+  management?: {
+    canManage: boolean;
+    showManagementButtons: boolean;
+    adminUrl: string;
+    contentType: 'post' | 'page';
+    isPinned: boolean;
+    csrfToken: string;
+  } | null;
 }
 
-const { cid, componentLoadMode, initialLoadMode, cooldownSeconds = 0 } = Astro.props;
+const { cid, componentLoadMode, initialLoadMode, cooldownSeconds = 0, management } = Astro.props;
 const requestedCommentPage = Astro.url.searchParams.get('commentPage');
 ---
 <section
@@ -21,6 +29,12 @@ const requestedCommentPage = Astro.url.searchParams.get('commentPage');
   data-comment-component-load={componentLoadMode}
   data-current-page={requestedCommentPage || undefined}
   data-comment-initial-load={initialLoadMode}
+  data-can-manage={management?.canManage ? 'true' : undefined}
+  data-show-management-buttons={management?.showManagementButtons === false ? 'false' : 'true'}
+  data-admin-url={management?.adminUrl}
+  data-content-type={management?.contentType}
+  data-is-pinned={management?.isPinned ? 'true' : 'false'}
+  data-csrf-token={management?.csrfToken}
 ></section>
 
 <script is:inline>
@@ -52,12 +66,12 @@ const requestedCommentPage = Astro.url.searchParams.get('commentPage');
       element.textContent = value || element.dataset.defaultMessage || '';
     };
 
-    const renderForm = (options, commenter, password, cid, antispamToken, management) => {
+    const renderForm = (options, commenter, password, cid, antispamToken) => {
       if (!options.allowComment) return '<p class="warm-comments__closed">评论已关闭。</p>';
       const loggedIn = commenter?.loggedIn === true;
       const defaultMessage = options.markdown ? '支持 Markdown 语法' : '良言善语';
       const identity = loggedIn
-        ? `<p class="warm-comment-form__identity">以 ${management?.canManage ? `<a href="${escapeHtml(management.adminUrl)}" data-no-instant><strong>${escapeHtml(commenter.author || '当前用户')}</strong></a>` : `<strong>${escapeHtml(commenter.author || '当前用户')}</strong>`} 的身份评论</p>`
+        ? `<p class="warm-comment-form__identity">以 <strong>${escapeHtml(commenter.author || '当前用户')}</strong> 的身份评论</p>`
         : `<div class="warm-form-grid">
             <label>
               <span>昵称 / 姓名 <i>*</i></span>
@@ -99,7 +113,7 @@ const requestedCommentPage = Astro.url.searchParams.get('commentPage');
       </form>`;
     };
 
-const renderManagement = (management, cid) => {
+    const renderManagement = (management, cid) => {
   if (!management?.canManage || management.showManagementButtons === false) return '';
 
   const contentType = management.contentType;
@@ -201,9 +215,16 @@ const renderManagement = (management, cid) => {
     const renderFrame = (root, data) => {
       const password = new URL(window.location.href).searchParams.get('password') || '';
       root.innerHTML = `<div class="warm-comments__heading"><h2>讨论与交流</h2><p>欢迎分享你的思考</p>
-          ${renderManagement(data.management, root.dataset.cid)}
+          ${renderManagement(root.dataset.canManage === 'true' ? {
+            canManage: true,
+            showManagementButtons: root.dataset.showManagementButtons !== 'false',
+            adminUrl: root.dataset.adminUrl || '/admin/',
+            contentType: root.dataset.contentType,
+            isPinned: root.dataset.isPinned === 'true',
+            csrfToken: root.dataset.csrfToken || '',
+          } : null, root.dataset.cid)}
         </div>
-        ${renderForm(data.options, data.commenter, password, root.dataset.cid, data.antispamToken, data.management)}
+        ${renderForm(data.options, data.commenter, password, root.dataset.cid, data.antispamToken)}
         <div class="warm-comment-list" data-comment-list aria-live="polite">
           <div class="warm-comment-deferred" data-comment-deferred>
             <span class="warm-comments__empty" data-comment-loading data-comment-deferred-message aria-live="polite"></span>
@@ -236,9 +257,6 @@ const renderManagement = (management, cid) => {
       let dwellTimer = null;
       let componentObserver = null;
       let componentVisible = false;
-      let componentScrollStarted = false;
-      let componentScrollHandler = null;
-      const componentInitialScrollTop = window.scrollY;
       const autoLimit = initialMode === 'auto-2' ? 2 : initialMode === 'infinite' ? Infinity : 0;
 
       const cooldownMs = Math.max(0, Number(root.dataset.commentCooldown || 0) * 1000);
@@ -305,8 +323,6 @@ const renderManagement = (management, cid) => {
       const stopInitialLoader = () => {
         componentObserver?.disconnect();
         componentObserver = null;
-        if (componentScrollHandler) window.removeEventListener('scroll', componentScrollHandler);
-        componentScrollHandler = null;
         if (dwellTimer) window.clearTimeout(dwellTimer);
         dwellTimer = null;
         paginationObserver?.disconnect();
@@ -460,7 +476,7 @@ const renderManagement = (management, cid) => {
           list = root.querySelector('[data-comment-list]');
           if (!list) throw new Error('评论组件加载失败');
           list.setAttribute('aria-busy', 'true');
-          renderComments(data, list, false, true);
+          renderComments(data, list, false, false);
           return true;
         } catch (error) {
           renderComponentPrompt(root, error instanceof Error ? error.message : '评论加载失败，点击重试。', true, false);
@@ -472,7 +488,6 @@ const renderManagement = (management, cid) => {
         }
       };
 
-            // 管理按钮：打开和关闭确认弹窗
       root.addEventListener('click', async event => {
         const element = event.target instanceof Element ? event.target : null;
         if (!element) return;
@@ -583,21 +598,33 @@ const renderManagement = (management, cid) => {
           showError('');
 
           try {
-            const response = await fetch('/api/admin/theme-pin', {
+            const configResponse = await fetch('/api/admin/theme-config', {
+              credentials: 'same-origin',
+              headers: { Accept: 'application/json' },
+            });
+            const config = await configResponse.json();
+            if (!configResponse.ok || config.theme !== 'typecho-theme-oxn' || !config.values) {
+              throw new Error(config.error || '无法读取 OXN 主题设置');
+            }
+
+            const pinnedIds = String(config.values.pinnedIds || '')
+              .split(/[，,\s]+/)
+              .map(value => Number(value.trim()))
+              .filter(value => Number.isSafeInteger(value) && value > 0 && value !== Number(cid));
+            if (targetPinned) pinnedIds.unshift(Number(cid));
+
+            const response = await fetch('/api/admin/theme-config', {
               method: 'POST',
+              credentials: 'same-origin',
               headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-Token': csrfToken,
               },
               body: JSON.stringify({
-                cid: Number(cid),
-                pinned: targetPinned,
-                confirmation: '确认',
+                settings: { ...config.values, pinnedIds: [...new Set(pinnedIds)].join(',') },
               }),
             });
-
             const result = await response.json();
-
             if (!response.ok || !result.success) {
               throw new Error(result.error || '置顶操作失败，请稍后重试');
             }
@@ -783,7 +810,7 @@ const renderManagement = (management, cid) => {
           setDwellLoading(false);
         };
         const startDwellTimer = () => {
-          if (!componentScrollStarted || dwellTimer || metadataLoaded || metadataRequest) return;
+          if (dwellTimer || metadataLoaded || metadataRequest) return;
           setDwellLoading(true);
           dwellTimer = window.setTimeout(() => {
             dwellTimer = null;
@@ -792,17 +819,9 @@ const renderManagement = (management, cid) => {
           }, 3_000);
         };
 
-        componentScrollHandler = () => {
-          if (window.scrollY === componentInitialScrollTop) return;
-          componentScrollStarted = true;
-          window.removeEventListener('scroll', componentScrollHandler);
-          componentScrollHandler = null;
-          if (!componentObserver || componentVisible) startDwellTimer();
-        };
-        window.addEventListener('scroll', componentScrollHandler, { passive: true });
-
         if (!('IntersectionObserver' in window)) {
           componentVisible = true;
+          startDwellTimer();
           return;
         }
         componentObserver = new IntersectionObserver(entries => {
@@ -816,17 +835,24 @@ const renderManagement = (management, cid) => {
         componentObserver.observe(deferred);
       };
 
+      const onPageShow = event => {
+        if (event.persisted) restoreCooldown();
+      };
+
       const cleanupStalePage = () => {
         if (root.isConnected) return;
         stopInitialLoader();
+        if (cooldownTimer) {
+          window.clearTimeout(cooldownTimer);
+          cooldownTimer = null;
+        }
+        window.removeEventListener('pageshow', onPageShow);
         window.removeEventListener('instantclick:newpage', cleanupStalePage);
       };
 
       startComponentLoader();
       restoreCooldown();
-      window.addEventListener('pageshow', event => {
-        if (event.persisted) restoreCooldown();
-      });
+      window.addEventListener('pageshow', onPageShow);
       window.addEventListener('instantclick:newpage', cleanupStalePage);
     });
   })();

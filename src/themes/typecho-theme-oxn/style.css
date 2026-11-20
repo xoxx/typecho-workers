@@ -1,5 +1,6 @@
 /* Warm: white paper, warm grey ink, and a quiet serif reading accent. */
 :root {
+  color-scheme: light;
   --warm-bg: #fff;
   --warm-surface: #f7f6f3;
   --warm-surface-strong: #f2f0ec;
@@ -162,16 +163,6 @@ body.warm-theme {
   transition: color 180ms ease, background-color 180ms ease;
 }
 
-.warm-nav__account {
-  gap: 6px;
-}
-
-.warm-nav__account-icon {
-  width: 16px;
-  height: 16px;
-  flex: 0 0 auto;
-}
-
 .warm-nav__dropdown > summary::-webkit-details-marker {
   display: none;
 }
@@ -301,26 +292,6 @@ body.warm-theme {
   line-height: 1.6;
 }
 
-.warm-pinned-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  margin-left: 2px;
-  padding: 2px 6px;
-  border: 1px solid var(--warm-accent, #e66b5b);
-  border-radius: 999px;
-  color: var(--warm-accent, #e66b5b);
-  font-size: 0.75rem;
-  line-height: 1.3;
-  white-space: nowrap;
-}
-.warm-pinned-badge svg {
-  width: 12px;
-  height: 12px;
-  flex: 0 0 12px;
-}
-
-
 .warm-theme .warm-category,
 .warm-theme .warm-private,
 .warm-theme .warm-note-label {
@@ -358,16 +329,24 @@ body.warm-theme {
   line-height: 1.95;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  line-clamp: 2; /* 标准属性 */
   overflow-wrap: anywhere;
 }
 
 .warm-note__content {
   position: relative;
+  min-width: 0;
+  max-width: 100%;
   color: #45413d;
   font-size: 17px;
   line-height: 2;
   overflow-wrap: anywhere;
+}
+
+.warm-note__content img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
 }
 
 .warm-note__content > :first-child,
@@ -380,19 +359,25 @@ body.warm-theme {
   margin-bottom: 0;
 }
 
-/* 笔记正文图片：限制在内容区域内，保持原始比例 */
-.warm-note__content img {
-  max-width: 100%;
-  height: auto;
+.warm-password-gate > p {
+  margin: 0 0 18px;
+  text-align: center;
 }
 
 .warm-note__content hr,
 .warm-prose hr {
   width: 42px;
   height: 1px;
-  margin: 3.7em auto;
   border: none;
   background: #dfdbd5;
+}
+
+.warm-note__content hr {
+  margin: 3.7em auto;
+}
+
+.warm-prose hr {
+  margin: 2.8em auto;
 }
 
 .warm-note__content p {
@@ -405,7 +390,7 @@ body.warm-theme {
   font-weight: 600;
 }
 
-/* Note media retains the existing grid, sizing, expansion and lightbox layout; all surfaces are hard-edged. */
+/* Note media keeps its existing grid, sizing, expansion and lightbox layout. */
 
 .warm-note__images {
   position: relative;
@@ -434,7 +419,7 @@ body.warm-theme {
   width: auto;
   max-width: 100%;
   aspect-ratio: 4 / 3;
-  border-radius: 0;
+  border-radius: 4px;
   background: var(--warm-surface-strong);
   object-fit: cover;
 }
@@ -732,22 +717,12 @@ body.warm-theme {
 .warm-prose {
   color: var(--warm-body);
   font-size: 17px;
+  line-height: 1.85;
   overflow-wrap: anywhere;
 }
 
-/* Keep the roomy rhythm on Markdown blocks, not restored custom HTML. */
-.warm-prose > :not(.cy-inline-html-pending) {
-  line-height: 2;
-}
-
-/* Custom HTML inherits the site's base line-height unless it defines its own. */
-.warm-prose .cy-inline-html-pending {
-  line-height: 1.75;
-}
-
-/* Only Markdown paragraphs receive the theme's large paragraph spacing. */
-.warm-prose > p {
-  margin: 0 0 1.65em;
+.warm-prose p {
+  margin: 0 0 1.2em;
 }
 
 .warm-prose h2,
@@ -759,9 +734,11 @@ body.warm-theme {
   scroll-margin-top: 40px;
 }
 
-.warm-prose h2 { margin: 3em 0 .95em; font-size: 1.48em; line-height: 1.5; }
-.warm-prose h3 { margin: 2.4em 0 .8em; font-size: 1.18em; line-height: 1.55; }
-.warm-prose h4 { margin: 2em 0 .7em; font-size: 1em; line-height: 1.6; }
+.warm-prose h2 { margin: 2.4em 0 .85em; font-size: 1.4em; line-height: 1.5; }
+.warm-prose h3 { margin: 1.9em 0 .7em; font-size: 1.25em; line-height: 1.55; }
+.warm-prose h4 { margin: 1.7em 0 .7em; font-size: 1.1em; line-height: 1.6; }
+.warm-prose h5 { font-size: 1.08em; }
+.warm-prose h6 { font-size: 1.08em; }
 
 .warm-prose a {
   color: #5f554d;
@@ -797,94 +774,36 @@ body.warm-theme {
   color: #aaa59f;
 }
 
-.warm-prose img {
+.warm-prose img,
+.warm-article__declaration img {
   max-width: 100%;
   height: auto;
+  border-radius: 4px;
+}
+
+.warm-prose iframe {
+  display: block;
+  width: 100%;
+  max-width: 720px;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  margin: 1.5rem auto;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
 }
 
 .warm-prose figure {
-  margin: 2.9em 0;
-}
-
-/* WordPress/Gutenberg block alignment and common media wrappers. */
-.warm-prose .aligncenter,
-.warm-prose .wp-block-image.aligncenter,
-.warm-prose .wp-block-gallery.aligncenter {
-  display: block;
-  margin-right: auto;
-  margin-left: auto;
-}
-
-.warm-prose .alignleft {
-  float: left;
-  max-width: min(48%, 320px);
-  margin: .35em 1.5em 1em 0;
-}
-
-.warm-prose .alignright {
-  float: right;
-  max-width: min(48%, 320px);
-  margin: .35em 0 1em 1.5em;
-}
-
-.warm-prose .wp-block-image,
-.warm-prose .wp-block-gallery,
-.warm-prose .wp-block-embed,
-.warm-prose .wp-block-video {
-  max-width: 100%;
-}
-
-.warm-prose .wp-block-image img,
-.warm-prose .wp-block-gallery img,
-.warm-prose .wp-block-video video {
-  max-width: 100%;
-  height: auto;
-}
-
-.warm-prose .wp-block-image figcaption,
-.warm-prose .wp-block-gallery figcaption,
-.warm-prose .wp-caption-text {
-  margin: 10px auto 0;
-  color: var(--warm-faint);
-  font-size: 12px;
-  line-height: 1.7;
-  text-align: center;
-}
-
-.warm-prose .wp-block-columns {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1.5rem;
-  align-items: flex-start;
-}
-
-.warm-prose .wp-block-column {
-  flex: 1 1 0;
-  min-width: min(100%, 220px);
-}
-
-.warm-prose .wp-block-separator {
-  width: min(100%, 7rem);
-  margin: 2.5em auto;
-  border: 0;
-  border-top: 1px solid var(--warm-border);
-}
-
-.warm-prose .wp-block-table {
-  max-width: 100%;
-  overflow-x: auto;
-}
-
-.warm-prose .wp-block-table table {
-  width: 100%;
-  margin: 1.5em 0;
+  margin: 2.2em 0;
 }
 
 .warm-prose figure img {
   display: block;
-  max-width: 100%;
-  height: auto;
   background: var(--warm-surface);
+}
+
+.warm-prose figure img:not([width]):not([height]) {
+  width: 100%;
 }
 
 .warm-prose figcaption {
@@ -896,30 +815,16 @@ body.warm-theme {
   text-align: center;
 }
 
-.warm-prose details {
-  margin: 1.5em 0;
-  padding: .9em 1.1em;
-  border: 1px solid var(--warm-border);
-  background: var(--warm-surface);
+.warm-prose blockquote {
+  margin: 1.4em 0;
 }
 
-.warm-prose details > summary {
-  color: var(--warm-text);
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.warm-prose details[open] > summary {
-  margin-bottom: .8em;
-}
-
-.warm-prose details > :not(summary):first-of-type {
-  margin-top: .5em;
+.warm-note__content blockquote {
+  margin: 1.7em 0;
 }
 
 .warm-prose blockquote,
 .warm-note__content blockquote {
-  margin: 1.7em 0;
   padding: 1em 1em 1em 1.35em;
   border-left: 1px solid #d9d5cf;
   color: #625d57;
@@ -927,17 +832,6 @@ body.warm-theme {
   font-size: 1.08em;
   letter-spacing: .005em;
   background: #f9f9f8;
-}
-
-.warm-prose blockquote > strong:first-child {
-  display: block;
-  margin-bottom: .65em;
-  color: #403b35;
-  font-family: var(--warm-font);
-  font-size: .78em;
-  font-weight: 700;
-  letter-spacing: .07em;
-  text-transform: uppercase;
 }
 
 .warm-prose blockquote p,
@@ -956,177 +850,78 @@ body.warm-theme {
 }
 
 /* GitHub-style markdown alerts (`> [!NOTE]` …) — same panel as quote, plus title */
-
-/* GitHub-style Markdown Alerts：五种提示框 */
 .warm-prose .markdown-alert,
 .warm-note__content .markdown-alert {
-  margin: 1.7em 0;
-  padding: 16px 18px;
-  border: 1px solid;
-  border-left-width: 3px;
-  border-radius: 8px;
-  font-family: inherit;
+  margin: 1.5em 0;
   font-size: 0.95em;
-  line-height: 1.75;
+  line-height: 1.65;
   letter-spacing: 0;
+  color: #403d39;
 }
 
-/* 提示框标题 */
 .warm-prose .markdown-alert-title,
 .warm-note__content .markdown-alert-title {
-  display: flex;
-  align-items: center;
   margin: 0 0 8px !important;
-  font-family: var(--warm-font);
-  font-size: 0.92rem;
   font-weight: 700;
-  line-height: 1.5;
+  font-size: .92rem;
+  line-height: 1.25em;
   letter-spacing: 0;
 }
-/* Render the alert glyph emitted by the Rehype pipeline directly.
-   Do not hide it: the title pseudo-element is intentionally disabled. */
-.warm-prose .markdown-alert-title .markdown-alert-icon,
-.warm-note__content .markdown-alert-title .markdown-alert-icon {
-  display: inline-flex !important;
-  flex: 0 0 18px;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  min-width: 18px;
-  height: 18px;
-  margin-right: 8px;
-  font-family: Arial, sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1;
-}
 
-.warm-prose .markdown-alert-title::before,
-.warm-note__content .markdown-alert-title::before {
-  content: none !important;
-  display: none !important;
-}
-
-/* 提示框正文 */
 .warm-prose .markdown-alert p,
 .warm-note__content .markdown-alert p {
-  margin-top: 0;
-  margin-bottom: 0.75em;
-  line-height: inherit;
+  margin-bottom: .85em;
 }
 
-.warm-prose .markdown-alert p:last-child,
-.warm-note__content .markdown-alert p:last-child {
+.warm-prose .markdown-alert > :last-child,
+.warm-note__content .markdown-alert > :last-child {
   margin-bottom: 0;
 }
 
-/* NOTE - 蓝紫色 */
 .warm-prose .markdown-alert-note,
 .warm-note__content .markdown-alert-note {
-  border-color: #c7d2fe;
-  border-left-color: #818cf8;
-  background: #eef2ff;
-  color: #4338ca;
+  border-left-color: #5b8ab5;
+}
+.warm-prose .markdown-alert-note .markdown-alert-title,
+.warm-note__content .markdown-alert-note .markdown-alert-title {
+  color: #5b8ab5;
 }
 
-/* TIP - 绿色 */
 .warm-prose .markdown-alert-tip,
 .warm-note__content .markdown-alert-tip {
-  border-color: #bbf7d0;
-  border-left-color: #4ade80;
-  background: #f0fdf4;
-  color: #15803d;
+  border-left-color: #6a9a6e;
+}
+.warm-prose .markdown-alert-tip .markdown-alert-title,
+.warm-note__content .markdown-alert-tip .markdown-alert-title {
+  color: #6a9a6e;
 }
 
-/* IMPORTANT - 紫色 */
-.warm-prose .markdown-alert[data-alert="IMPORTANT" i],
-.warm-note__content .markdown-alert[data-alert="IMPORTANT" i],
-.warm-prose .markdown-alert-important,
-.warm-note__content .markdown-alert-important {
-  border-color: #e9d5ff;
-  border-left-color: #c084fc;
-  background: #faf5ff;
-  color: #9333ea;
-}
-
-/* WARNING - 黄色 */
 .warm-prose .markdown-alert-warning,
 .warm-note__content .markdown-alert-warning {
-  border-color: #fde68a;
-  border-left-color: #facc15;
-  background: #fefce8;
-  color: #a16207;
+  border-left-color: #c4a035;
+}
+.warm-prose .markdown-alert-warning .markdown-alert-title,
+.warm-note__content .markdown-alert-warning .markdown-alert-title {
+  color: #c4a035;
 }
 
-/* CAUTION - 红色 */
-.warm-prose .markdown-alert[data-alert="CAUTION" i],
-.warm-note__content .markdown-alert[data-alert="CAUTION" i],
+.warm-prose .markdown-alert-important,
+.warm-note__content .markdown-alert-important {
+  border-left-color: rgb(192, 132, 252);
+}
+.warm-prose .markdown-alert-important .markdown-alert-title,
+.warm-note__content .markdown-alert-important .markdown-alert-title {
+  color: rgb(192, 132, 252);
+}
+
 .warm-prose .markdown-alert-caution,
 .warm-note__content .markdown-alert-caution {
-  border-color: #fecaca;
-  border-left-color: #f87171;
-  background: #fef2f2;
-  color: #dc2626;
+  border-left-color: rgb(248, 113, 113);
 }
-
-/* 五种提示框标题继承对应颜色 */
-.warm-prose .markdown-alert-title,
-.warm-note__content .markdown-alert-title {
-  color: inherit;
+.warm-prose .markdown-alert-caution .markdown-alert-title,
+.warm-note__content .markdown-alert-caution .markdown-alert-title {
+  color: rgb(248, 113, 113);
 }
-
-/* Keep emphasized text throughout an alert aligned with its variant color.
-   Inline HTML styles still take precedence when an author supplies them. */
-.warm-prose .markdown-alert strong,
-.warm-note__content .markdown-alert strong {
-  color: inherit;
-}
-
-/* 深色模式 */
-.dark .warm-prose .markdown-alert-note,
-.dark .warm-note__content .markdown-alert-note {
-  border-color: #312e81;
-  border-left-color: #818cf8;
-  background: #312e81;
-  color: #c7d2fe;
-}
-
-.dark .warm-prose .markdown-alert-tip,
-.dark .warm-note__content .markdown-alert-tip {
-  border-color: #14532d;
-  border-left-color: #4ade80;
-  background: #14532d;
-  color: #bbf7d0;
-}
-
-.dark .warm-prose .markdown-alert[data-alert="IMPORTANT" i],
-.dark .warm-note__content .markdown-alert[data-alert="IMPORTANT" i],
-.dark .warm-prose .markdown-alert-important,
-.dark .warm-note__content .markdown-alert-important {
-  border-color: #581c87;
-  border-left-color: #c084fc;
-  background: #581c87;
-  color: #e9d5ff;
-}
-
-.dark .warm-prose .markdown-alert-warning,
-.dark .warm-note__content .markdown-alert-warning {
-  border-color: #713f12;
-  border-left-color: #facc15;
-  background: #713f12;
-  color: #fef08a;
-}
-
-.dark .warm-prose .markdown-alert[data-alert="CAUTION" i],
-.dark .warm-note__content .markdown-alert[data-alert="CAUTION" i],
-.dark .warm-prose .markdown-alert-caution,
-.dark .warm-note__content .markdown-alert-caution {
-  border-color: #7f1d1d;
-  border-left-color: #f87171;
-  background: #7f1d1d;
-  color: #fecaca;
-}
-
 
 .warm-prose code {
   padding: .12em .35em;
@@ -1137,9 +932,10 @@ body.warm-theme {
 }
 
 .warm-prose pre {
+  position: relative;
   overflow-x: auto;
-  margin: 1.5em 0;
-  padding: 18px 20px;
+  margin: 2em 0;
+  padding: 44px 34px 30px;
   background: var(--warm-surface);
   color: #403d39;
   font-family: var(--warm-mono);
@@ -1148,23 +944,46 @@ body.warm-theme {
   tab-size: 2;
 }
 
-/* Code titles are emitted by remark-flexible-code-titles as a semantic strong node. */
-.warm-prose strong:has(+ pre) {
-  display: block;
-  margin: 1.5em 0 0;
-  padding: 6px 12px;
-  background: var(--warm-surface);
-  color: var(--warm-faint);
-  font-family: var(--warm-mono);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.5;
-}
 
-.warm-prose strong + pre {
-  margin-top: 0;
-  padding-top: 12px;
-  border-top: 1px solid var(--warm-border);
+.warm-prose pre [data-warm-copy] {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 28px;
+  padding: 4px;
+  border: 1px solid var(--warm-border);
+  border-radius: 4px;
+  background: var(--warm-bg);
+  color: var(--warm-muted);
+  font-size: 0;
+  line-height: 0;
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 150ms ease, visibility 150ms ease;
+}
+.warm-prose pre [data-warm-copy] svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+.warm-prose pre [data-warm-copy][data-copied="true"] {
+  color: #16a34a;
+}
+.warm-prose pre:hover [data-warm-copy],
+.warm-prose pre:focus-within [data-warm-copy] {
+  opacity: .85;
+  visibility: visible;
+}
+@media (hover: none), (pointer: coarse) {
+  .warm-prose pre [data-warm-copy] {
+    opacity: .85;
+    visibility: visible;
+  }
 }
 
 .warm-prose pre code {
@@ -1174,12 +993,11 @@ body.warm-theme {
   font-size: inherit;
 }
 
-
 .warm-prose table {
   min-width: stretch;
   width: max-content !important;
   overflow-x: auto;
-  margin: 2.5em 0;
+  margin: 2em 0;
   border-collapse: collapse;
   font-size: 14px;
   line-height: 1.75;
@@ -1189,8 +1007,23 @@ body.warm-theme {
 .warm-prose td {
   padding: 12px 14px;
   border-bottom: 1px solid var(--warm-border);
-  text-align: left;
   vertical-align: top;
+  text-align: left;
+}
+
+.warm-prose th[align="left"],
+.warm-prose td[align="left"] {
+  text-align: left;
+}
+
+.warm-prose th[align="center"],
+.warm-prose td[align="center"] {
+  text-align: center;
+}
+
+.warm-prose th[align="right"],
+.warm-prose td[align="right"] {
+  text-align: right;
 }
 
 .warm-prose th {
@@ -1202,16 +1035,15 @@ body.warm-theme {
   color: #68635e;
 }
 
-/* Only top-level article blocks break out: never notes, comments or nested lists. */
-.warm-article:not(.is-note) .warm-prose img:not([width][height]),
+/* Tables may break out; article images stay within the reading column. */
 .warm-article:not(.is-note) .warm-prose table {
   position: relative;
   left: 50%;
+  width: auto;
   max-width: min(
     var(--warm-breakout-width),
     calc(100% + 2 * var(--warm-gutter) + max(0px, 100vw - var(--warm-page-width)))
   );
-  width: auto;
   transform: translateX(-50%);
 }
 
@@ -1234,6 +1066,7 @@ body.warm-theme {
 .warm-toc__inner::-webkit-scrollbar {
   display: none;
 }
+
 
 .warm-toc__list {
   margin: 0;
@@ -1284,7 +1117,8 @@ body.warm-theme {
 }
 
 .warm-toc:hover .warm-toc__label,
-.warm-toc:focus-within .warm-toc__label {
+.warm-toc:focus-within .warm-toc__label,
+.warm-toc.is-expanded .warm-toc__label {
   max-width: 11.5em;
   margin-left: 10px;
   overflow: hidden;
@@ -1327,7 +1161,7 @@ body.warm-theme {
 }
 
 @media (hover: none) {
-  .warm-toc__label {
+  .warm-toc.is-expanded .warm-toc__label {
     max-width: 11.5em;
     margin-left: 10px;
     opacity: 1;
@@ -1428,6 +1262,71 @@ body.warm-theme {
   margin-bottom: 24px;
 }
 
+/* 1119d 评论区管理员操作按钮：沿用成熟版结构与状态样式。 */
+.warm-article__actions {
+  position: static;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-height: 32px;
+  margin-left: auto;
+}
+
+.warm-action-button {
+  position: static;
+  display: inline-flex;
+  width: 32px;
+  height: 30px;
+  min-width: 32px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--warm-border);
+  border-radius: 6px;
+  background: var(--warm-bg);
+  color: var(--warm-muted);
+  cursor: pointer;
+  transition: color .2s ease, border-color .2s ease, background-color .2s ease;
+}
+
+.warm-action-button:hover {
+  border-color: var(--warm-accent);
+  background: var(--warm-surface);
+  color: var(--warm-accent);
+}
+
+.warm-action-button svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
+
+.warm-action-button.is-pinned {
+  border-color: var(--warm-accent);
+  color: var(--warm-accent);
+}
+
+.warm-action-button[data-warm-action="delete"] {
+  color: #f59e0b;
+}
+
+@media (max-width: 640px) {
+  .warm-article__actions { gap: 5px; }
+  .warm-action-button {
+    width: 30px;
+    height: 29px;
+    min-width: 30px;
+  }
+  .warm-action-button svg {
+    width: 15px;
+    height: 15px;
+    flex-basis: 15px;
+  }
+}
+
 .warm-comments__heading h2 {
   margin: 0;
   font-size: 20px;
@@ -1491,7 +1390,7 @@ body.warm-theme {
 
 .warm-comment-form input,
 .warm-comment-form textarea,
-.warm-not-found input {
+.warm-compact-form__input {
   width: 100%;
   border: 1px solid var(--warm-border);
   border-radius: 0;
@@ -1513,7 +1412,7 @@ body.warm-theme {
 
 .warm-comment-form input:focus,
 .warm-comment-form textarea:focus,
-.warm-not-found input:focus {
+.warm-compact-form__input:focus {
   border-color: var(--warm-accent);
   background: var(--warm-bg);
   outline: 0;
@@ -1560,7 +1459,7 @@ body.warm-theme {
 }
 
 .warm-comment-form button,
-.warm-not-found button {
+.warm-compact-form__submit {
   min-height: 39px;
   padding: 7px 18px;
   border: 0;
@@ -1574,7 +1473,7 @@ body.warm-theme {
 }
 
 .warm-comment-form button:hover,
-.warm-not-found button:hover {
+.warm-compact-form__submit:hover {
   background: var(--warm-text);
   color: #fff;
 }
@@ -1775,43 +1674,34 @@ body.warm-theme {
   border-radius: 0;
 }
 
-.warm-not-found form {
+.warm-compact-form {
   width: min(100%, 430px);
   margin: 28px auto;
   text-align: left;
 }
 
-.warm-not-found label {
+.warm-compact-form__label {
   display: block;
   margin-bottom: 6px;
   color: var(--warm-muted);
   font-size: 12px;
 }
 
-.warm-not-found form > div {
+.warm-compact-form__row {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 7px;
 }
 
-.warm-not-found input {
+.warm-compact-form__input {
   min-width: 0;
   min-height: 42px;
   padding: 8px 11px;
 }
 
 .warm-footer {
-  margin-top: 36px;
-  padding-bottom: 36px;
-}
-
-.warm-footer__custom {
-  margin-bottom: 12px;
-}
-
-/* Keep a natural gap before the article declaration; its visual style is user-defined. */
-.warm-article__declaration {
-  margin-top: 24px;
+  margin-top: 80px;
+  padding-bottom: 48px;
 }
 
 .warm-footer__meta {
@@ -1830,13 +1720,10 @@ body.warm-theme {
   gap: 6px;
 }
 
-/* 页脚自定义链接 */
 .warm-footer__meta nav {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  column-gap: 18px;
-  row-gap: 4px;
+  gap: 20px;
 }
 
 /* 页脚链接 */
@@ -1848,7 +1735,7 @@ body.warm-theme {
   transition: color 0.2s ease;
 }
 
-/* 页脚链接中的图标容器 */
+/* 页脚图标容器 */
 .warm-footer__meta nav > a > span {
   display: inline-flex;
   align-items: center;
@@ -1863,8 +1750,7 @@ body.warm-theme {
   color: inherit;
 }
 
-/* 页脚图标和文字统一悬停颜色 */
-.warm-footer__meta nav > a:hover {
+.warm-footer__meta a:hover {
   color: var(--warm-accent);
 }
 
@@ -1936,30 +1822,14 @@ body.warm-theme {
   }
 
   .warm-prose pre {
-    padding: 14px 16px;
+    padding: 44px 28px 24px;
     font-size: 13px;
   }
 
-  .warm-comments__heading {
-    align-items: center;
-    flex-direction: row;
-    justify-content: space-between;
-    gap: 8px;
-  }
-  
+  .warm-comments__heading,
   .warm-footer__meta {
     align-items: flex-start;
     flex-direction: column;
-  }
-  
-  .warm-comments__heading h2 {
-    flex: 0 1 auto;
-    min-width: 0;
-  }
-  
-  .warm-article__actions {
-    flex: 0 0 auto;
-    margin-left: auto;
   }
 
   .warm-comments__heading p {
@@ -1980,8 +1850,8 @@ body.warm-theme {
   }
 
   .warm-footer {
-    margin-top: 36px;
-    padding-bottom: 36px;
+    margin-top: 64px;
+    padding-bottom: 40px;
   }
 }
 
@@ -2001,502 +1871,15 @@ body.warm-theme {
 }
 
 
-/* Markdown 表格：完整边框、横竖分隔线、内容垂直居中 */
-.warm-prose table {
-  width: 100%;
-  border-collapse: collapse;
-  border: 1px solid #d9dfe7;
-  table-layout: auto;
+/* CY-derived top quick actions and search dialog */
+.warm-header__tools {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-height: 32px;
 }
-
-/* 表头与单元格 */
-.warm-prose table th,
-.warm-prose table td {
-  border: 1px solid #d9dfe7;
-  padding: 10px 12px;
-  text-align: left;
-  vertical-align: middle;
-}
-
-/* 表头 */
-.warm-prose table th {
-  font-weight: 600;
-  background-color: #f5f7fa;
-}
-
-/* 表格中的图标 */
-.warm-prose table td img {
-  display: inline-block;
-  max-width: 100%;
-  height: auto;
-  vertical-align: middle;
-}
-
-/* 深色模式 */
-.dark .warm-prose table th {
-  background-color: #252a32;
-}
-
-.dark .warm-prose table,
-.dark .warm-prose table th,
-.dark .warm-prose table td {
-  border-color: #444b57;
-}
-
-/* Markdown 表格对齐支持 */
-.warm-prose table th[align="left"],
-.warm-prose table td[align="left"] {
-  text-align: left;
-}
-
-.warm-prose table th[align="center"],
-.warm-prose table td[align="center"] {
-  text-align: center;
-}
-
-.warm-prose table th[align="right"],
-.warm-prose table td[align="right"] {
-  text-align: right;
-}
-
-/* Article iframe player */
-.warm-prose iframe {
-  display: block;
-  width: 100%;
-  max-width: 100%;
-  aspect-ratio: 16 / 9;
-  height: auto;
-  margin: 1.5rem 0;
-  border: 0;
-  border-radius: 10px;
-  background: #000;
-}
-
-/* Keep iframe players responsive on mobile */
-@media (max-width: 640px) {
-  .warm-prose iframe {
-    margin: 1rem 0;
-    border-radius: 8px;
-  }
-}
-
-/* ========================================
-   CY 管理弹窗：统一 Rin 字体规范
-   置顶、删除弹窗共用
-   ======================================== */
-
-/* 弹窗标题 */
-.warm-manage-dialog__panel [data-warm-dialog-title] {
-  font-size: 20px;
-  line-height: 28px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
-/* 弹窗正文 */
-.warm-manage-dialog__panel [data-warm-dialog-message] {
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 400;
-}
-
-/* 删除确认输入框 */
-.warm-manage-dialog__input {
-  font-size: 16px;
-}
-
-/* 确认和取消按钮 */
-.warm-manage-dialog__actions button {
-  font-size: 16px;
-}
-
-/* 错误提示 */
-.warm-manage-dialog__error {
-  font-size: 12px;
-}
-
-
-/* ========================================
-   CY 管理员文章操作按钮
-   ======================================== */
-
-   .warm-article__actions {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin-left: auto;
-  }
-  
-  .warm-action-button {
-    position: static;
-    display: inline-flex;
-    width: 32px;
-    height: 30px;
-    min-width: 32px;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    border: 1px solid var(--warm-border);
-    border-radius: 6px;
-    background: var(--warm-bg);
-    color: var(--warm-muted);
-    cursor: pointer;
-    transition:
-      color .2s ease,
-      border-color .2s ease,
-      background-color .2s ease;
-  }
-  
-  .warm-action-button:hover {
-    border-color: var(--warm-accent);
-    background: var(--warm-surface);
-    color: var(--warm-accent);
-  }
-  
-  .warm-action-button svg {
-    display: block;
-    width: 16px;
-    height: 16px;
-    flex: 0 0 16px;
-  }
-  
-  .warm-action-button.is-pinned {
-    border-color: var(--warm-accent);
-    color: var(--warm-accent);
-  }
-  
-  /* ========================================
-     CY 管理弹窗：基础容器
-     ======================================== */
-  
-  .warm-manage-dialog {
-    position: fixed;
-    inset: 0;
-    width: min(420px, calc(100% - 32px));
-    max-width: 420px;
-    max-height: calc(100% - 40px);
-    margin: auto;
-    padding: 0;
-    overflow: auto;
-    border: 1px solid var(--warm-border);
-    border-radius: 12px;
-    background: var(--warm-bg);
-    color: var(--warm-text);
-    box-shadow:
-      0 24px 80px rgb(0 0 0 / 18%),
-      0 4px 16px rgb(0 0 0 / 8%);
-    font-family: var(--warm-font);
-  }
-  
-  .warm-manage-dialog[open] {
-    display: block;
-    animation: warm-manage-dialog-in .2s ease-out;
-  }
-  
-  .warm-manage-dialog::backdrop {
-    background: rgb(20 19 18 / 55%);
-    backdrop-filter: blur(3px);
-    -webkit-backdrop-filter: blur(3px);
-  }
-  
-  .warm-manage-dialog__panel {
-    padding: 28px;
-  }
-  
-  /* 弹窗进入动画 */
-  @keyframes warm-manage-dialog-in {
-    from {
-      opacity: 0;
-      transform: translateY(8px) scale(.98);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-  }
-  
-  /* ========================================
-     CY 管理弹窗：标题与正文
-     ======================================== */
-  
-  .warm-manage-dialog__panel h2,
-  .warm-manage-dialog__panel [data-warm-dialog-title] {
-    margin: 0 0 16px;
-    color: var(--warm-text);
-    font-family: var(--warm-font);
-    font-size: 20px;
-    font-weight: 700;
-    line-height: 28px;
-    letter-spacing: -.02em;
-  }
-  
-  .warm-manage-dialog__panel p,
-  .warm-manage-dialog__panel [data-warm-dialog-message] {
-    margin: 0 0 12px;
-    color: var(--warm-muted);
-    font-family: var(--warm-font);
-    font-size: 16px;
-    font-weight: 400;
-    line-height: 24px;
-    overflow-wrap: anywhere;
-  }
-  
-  /* 删除弹窗第二段说明 */
-  .warm-manage-dialog[data-warm-dialog="delete"] .warm-manage-dialog__panel p:not(.warm-manage-dialog__error) {
-    margin-bottom: 12px;
-  }
-  
-  /* ========================================
-     CY 管理弹窗：输入框
-     ======================================== */
-  
-  .warm-manage-dialog__input {
-    display: block;
-    width: 100%;
-    min-width: 0;
-    min-height: 44px;
-    margin: 16px 0 8px;
-    padding: 10px 12px;
-    border: 1px solid var(--warm-border);
-    border-radius: 7px;
-    outline: none;
-    background: var(--warm-surface);
-    color: var(--warm-text);
-    font-family: var(--warm-font);
-    font-size: 15px;
-    line-height: 22px;
-    transition:
-      border-color .2s ease,
-      background-color .2s ease,
-      box-shadow .2s ease;
-  }
-  
-  .warm-manage-dialog__input::placeholder {
-    color: var(--warm-faint);
-  }
-  
-  .warm-manage-dialog__input:hover {
-    border-color: #c9c4bd;
-  }
-  
-  .warm-manage-dialog__input:focus {
-    border-color: var(--warm-accent);
-    background: var(--warm-bg);
-    box-shadow: 0 0 0 3px rgb(104 95 87 / 10%);
-  }
-  
-  /* ========================================
-     CY 管理弹窗：错误提示
-     ======================================== */
-  
-  .warm-manage-dialog__error {
-    min-height: 0;
-    margin: 8px 0 0 !important;
-    color: #dc4545 !important;
-    font-size: 13px !important;
-    line-height: 20px !important;
-  }
-  
-  .warm-manage-dialog__error:empty {
-    display: none;
-  }
-  
-  /* ========================================
-     CY 管理弹窗：操作按钮
-     ======================================== */
-  
-  .warm-manage-dialog__actions {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 24px;
-  }
-  
-  .warm-manage-dialog__actions button {
-    display: inline-flex;
-    min-width: 82px;
-    min-height: 38px;
-    align-items: center;
-    justify-content: center;
-    padding: 8px 16px;
-    border: 1px solid var(--warm-border);
-    border-radius: 7px;
-    background: var(--warm-bg);
-    color: var(--warm-muted);
-    font-family: var(--warm-font);
-    font-size: 14px;
-    font-weight: 500;
-    line-height: 20px;
-    cursor: pointer;
-    transition:
-      color .2s ease,
-      border-color .2s ease,
-      background-color .2s ease,
-      opacity .2s ease;
-  }
-  
-  .warm-manage-dialog__actions button:hover:not(:disabled) {
-    border-color: #c9c4bd;
-    background: var(--warm-surface);
-    color: var(--warm-text);
-  }
-  
-  /* 确认按钮 */
-  .warm-manage-dialog__actions [data-warm-dialog-confirm] {
-    border-color: var(--warm-accent);
-    background: var(--warm-accent);
-    color: #fff;
-  }
-  
-  .warm-manage-dialog__actions [data-warm-dialog-confirm]:hover:not(:disabled) {
-    border-color: var(--warm-text);
-    background: var(--warm-text);
-    color: #fff;
-  }
-  
-  /* 禁用状态 */
-  .warm-manage-dialog__actions button:disabled {
-    cursor: not-allowed;
-    opacity: .4;
-  }
-  
-  /* ========================================
-     CY 管理弹窗：深色模式
-     ======================================== */
-  
-  .dark .warm-manage-dialog {
-    border-color: #393939;
-    background: #202020;
-    color: #ededed;
-    box-shadow: 0 24px 80px rgb(0 0 0 / 45%);
-  }
-  
-  .dark .warm-manage-dialog__panel h2,
-  .dark .warm-manage-dialog__panel [data-warm-dialog-title] {
-    color: #f2f2f2;
-  }
-  
-  .dark .warm-manage-dialog__panel p,
-  .dark .warm-manage-dialog__panel [data-warm-dialog-message] {
-    color: #b5b5b5;
-  }
-  
-  .dark .warm-manage-dialog__input {
-    border-color: #414141;
-    background: #292929;
-    color: #ededed;
-  }
-  
-  .dark .warm-manage-dialog__input::placeholder {
-    color: #777;
-  }
-  
-  .dark .warm-manage-dialog__input:focus {
-    border-color: #a49a8f;
-    background: #252525;
-    box-shadow: 0 0 0 3px rgb(255 255 255 / 6%);
-  }
-  
-  .dark .warm-manage-dialog__actions button {
-    border-color: #414141;
-    background: #292929;
-    color: #ccc;
-  }
-  
-  .dark .warm-manage-dialog__actions button:hover:not(:disabled) {
-    border-color: #777;
-    background: #353535;
-    color: #fff;
-  }
-  
-  .dark .warm-manage-dialog__actions [data-warm-dialog-confirm] {
-    border-color: #777;
-    background: #777;
-    color: #fff;
-  }
-  
-  .dark .warm-manage-dialog__actions [data-warm-dialog-confirm]:hover:not(:disabled) {
-    border-color: #999;
-    background: #999;
-  }
-  
-  /* ========================================
-     CY 管理弹窗：手机端适配
-     ======================================== */
-  
-  @media (max-width: 640px) {
-    .warm-article__actions {
-      gap: 5px;
-    }
-  
-    .warm-action-button {
-      width: 30px;
-      height: 29px;
-      min-width: 30px;
-    }
-  
-    .warm-action-button svg {
-      width: 15px;
-      height: 15px;
-      flex-basis: 15px;
-    }
-  
-    .warm-manage-dialog {
-      width: calc(100% - 32px);
-      max-width: 380px;
-      border-radius: 11px;
-    }
-  
-    .warm-manage-dialog__panel {
-      padding: 24px 20px;
-    }
-  
-    .warm-manage-dialog__panel h2,
-    .warm-manage-dialog__panel [data-warm-dialog-title] {
-      font-size: 20px;
-      line-height: 28px;
-    }
-  
-    .warm-manage-dialog__panel p,
-    .warm-manage-dialog__panel [data-warm-dialog-message] {
-      font-size: 16px;
-      line-height: 24px;
-    }
-  
-    .warm-manage-dialog__actions {
-      gap: 8px;
-    }
-  
-    .warm-manage-dialog__actions button {
-      min-width: 76px;
-    }
-  }
-  
-  /* 减少动态效果 */
-  @media (prefers-reduced-motion: reduce) {
-    .warm-manage-dialog[open] {
-      animation: none;
-    }
-  }
-
-  .warm-manage-dialog__input:focus,
-.warm-manage-dialog__input:focus-visible {
-  outline: none;
-  box-shadow: none;
-  border-color: var(--theme-rgb, #11b031);
-}
-
-/* 删除图标：橙色 */
-.warm-action-button[data-warm-action="delete"] {
-  color: #f59e0b;
-}
-
-
-
-/* ========================================
-   Warm CY 首页搜索
-   ======================================== */
 .warm-search-trigger {
   display: inline-flex;
   width: 32px;
@@ -2507,19 +1890,33 @@ body.warm-theme {
   border: 0;
   border-radius: 7px;
   background: transparent;
-  color: #77736e;
+  color: var(--warm-muted);
   cursor: pointer;
   transition: color 180ms ease, background-color 180ms ease;
 }
 .warm-search-trigger:hover,
 .warm-search-trigger:focus-visible {
   background: var(--warm-hover);
-  color: #269b63;
+  color: var(--warm-accent);
 }
 .warm-search-trigger svg {
   display: block;
   width: 18px;
   height: 18px;
+}
+
+/* 顶部导航功能图标统一显示参数 */
+.warm-header__tools .warm-search-trigger > svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: inherit;
+}
+
+/* 后台入口图标线条较密，轻微缩小视觉占比 */
+.warm-header__tools .warm-nav__account > svg {
+  transform: scale(0.92);
 }
 .warm-search-dialog {
   position: fixed;
@@ -2551,7 +1948,7 @@ body.warm-theme {
 .warm-search-dialog__panel {
   position: relative;
   padding: 30px;
-  border: 1px solid rgba(235, 232, 227, .9);
+  border: 1px solid var(--warm-border);
   border-radius: 14px;
   background: var(--warm-bg);
   box-shadow: 0 18px 60px rgba(0, 0, 0, .16);
@@ -2559,8 +1956,8 @@ body.warm-theme {
 .warm-search-dialog__panel h2 {
   margin: 0 0 20px;
   color: var(--warm-text);
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 1.2rem;
+  font-weight: 700;
   line-height: 1.4;
 }
 .warm-search-dialog__close {
@@ -2589,25 +1986,42 @@ body.warm-theme {
   align-items: stretch;
   gap: 10px;
 }
-.warm-search-input {
+/* Search and management-dialog inputs share one visual definition. */
+.warm-search-input,
+.warm-manage-dialog__input {
   display: block;
+  box-sizing: border-box;
+  width: 100%;
   min-width: 0;
   min-height: 46px;
-  flex: 1 1 auto;
   padding: 10px 13px;
   border: 1px solid var(--warm-border);
   border-radius: 8px;
   outline: none;
   background: var(--warm-bg);
   color: var(--warm-text);
+  font-family: var(--warm-font);
   font-size: 15px;
+  line-height: 22px;
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
+.warm-search-input {
+  flex: 1 1 auto;
+}
+.warm-manage-dialog__input {
+  margin: 16px 0 8px;
+}
 .warm-search-input:focus,
-.warm-search-input:focus-visible {
-  border-color: #269b63;
+.warm-search-input:focus-visible,
+.warm-manage-dialog__input:focus,
+.warm-manage-dialog__input:focus-visible {
+  border-color: var(--warm-accent);
   outline: none;
-  box-shadow: 0 0 0 2px rgba(38, 155, 99, .09);
+  box-shadow: 0 0 0 2px rgba(104, 95, 87, .12);
+}
+.warm-search-input::placeholder,
+.warm-manage-dialog__input::placeholder {
+  color: var(--warm-faint);
 }
 .warm-search-submit {
   display: inline-flex;
@@ -2618,43 +2032,46 @@ body.warm-theme {
   justify-content: center;
   gap: 7px;
   padding: 0 16px;
-  border: 1px solid #269b63;
+  border: 1px solid var(--warm-accent);
   border-radius: 8px;
-  background: #269b63;
+  background: var(--warm-accent);
   color: #fff;
   font-size: 14px;
   cursor: pointer;
-  transition: background-color 160ms ease, border-color 160ms ease;
+  transition: filter 160ms ease;
 }
 .warm-search-submit:hover {
-  border-color: #1e8654;
-  background: #1e8654;
+  filter: brightness(.92);
 }
 .warm-search-submit svg {
   width: 17px;
   height: 17px;
 }
-.warm-search-error {
-  min-height: 1.4em;
-  margin: 8px 0 0;
-  color: #c2413b;
-  font-size: 12px;
+.warm-footer__custom {
+  margin-bottom: 12px;
 }
-.warm-search-error:empty {
-  display: none;
+.warm-article__declaration {
+  margin-top: 24px;
 }
-.dark .warm-search-dialog__panel {
-  border-color: #343434;
-  background: #202020;
+.warm-pinned-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 2px;
+  padding: 2px 6px;
+  border: 1px solid var(--warm-accent);
+  border-radius: 999px;
+  color: var(--warm-accent);
+  font-size: .75rem;
+  line-height: 1.3;
+  white-space: nowrap;
 }
-.dark .warm-search-dialog__panel h2,
-.dark .warm-search-input {
-  color: #eee;
+.warm-pinned-badge svg {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
 }
-.dark .warm-search-input {
-  border-color: #454545;
-  background: #292929;
-}
+
 @media (max-width: 639px) {
   .warm-search-dialog__panel { padding: 26px 18px 20px; }
   .warm-search-form { gap: 8px; }
@@ -2662,106 +2079,616 @@ body.warm-theme {
 }
 
 
-/* Rehype Markdown: math, code highlighting and browser-rendered Mermaid. */
-.warm-prose .katex-display,
-.warm-prose .mathjax-display {
-  box-sizing: border-box;
-  max-width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: .75em 0;
-  line-height: normal;
+/* CY 管理弹窗：沿用 1119d 布局，保留 OXN 当前配色。 */
+.warm-manage-dialog {
+  position: fixed; inset: 0; width: min(420px, calc(100% - 32px));
+  max-width: 420px; max-height: calc(100% - 40px); margin: auto;
+  padding: 0; overflow: auto; border: 1px solid var(--warm-border);
+  border-radius: 14px; background: var(--warm-bg); color: var(--warm-text);
+  box-shadow: 0 24px 80px rgb(0 0 0 / 18%), 0 4px 16px rgb(0 0 0 / 8%);
+  font-family: var(--warm-font);
 }
-.warm-prose .katex { font-size: 1.05em; }
-/* MathJax SVG glyphs and tall operators need a larger vertical safety area
-   inside the horizontally scrollable display-math viewport. */
-.warm-prose .mathjax-display { padding-block: 1.25em; }
-.warm-prose .mathjax-inline { line-height: normal; }
-.warm-prose .mathjax-display mjx-container[display="true"] { margin: 0 !important; }
-.warm-prose pre code.hljs { display: block; overflow-x: auto; padding: 0; }
-.warm-prose code.hljs { padding: .15em .35em; border-radius: 4px; }
-.warm-prose .hljs-comment, .warm-prose .hljs-quote { color: #8a918d; font-style: italic; }
-.warm-prose .hljs-keyword, .warm-prose .hljs-selector-tag, .warm-prose .hljs-literal { color: #9b5bce; }
-.warm-prose .hljs-string, .warm-prose .hljs-attr { color: #27865a; }
-.warm-prose .hljs-number, .warm-prose .hljs-symbol { color: #c07835; }
-.warm-prose .hljs-title, .warm-prose .hljs-function { color: #3979b8; }
-.warm-prose pre.mermaid_default,
-.warm-prose pre.mermaid_dark {
-  max-width: 100%;
-  margin: 1.5rem 0;
-  padding: 1rem 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior-x: contain;
-  -webkit-overflow-scrolling: touch;
-  background: transparent;
-  text-align: center;
-  white-space: normal;
+.warm-manage-dialog[open] { display: block; animation: warm-manage-dialog-in .2s ease-out; }
+.warm-manage-dialog::backdrop {
+  background: rgb(20 19 18 / 55%); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+}
+.warm-manage-dialog__panel { padding: 28px; }
+@keyframes warm-manage-dialog-in {
+  from { opacity: 0; transform: translateY(8px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.warm-manage-dialog__panel h2,
+.warm-manage-dialog__panel [data-warm-dialog-title] {
+  margin: 0 0 16px; color: var(--warm-text); font-family: var(--warm-font);
+  font-size: 1.2rem; font-weight: 700; line-height: 1.4; letter-spacing: -.02em;
+}
+.warm-manage-dialog__panel p,
+.warm-manage-dialog__panel [data-warm-dialog-message] {
+  margin: 0 0 12px; color: var(--warm-muted); font-family: var(--warm-font);
+  font-size: 16px; font-weight: 400; line-height: 24px; overflow-wrap: anywhere;
+}
+.warm-manage-dialog[data-warm-dialog="delete"] .warm-manage-dialog__panel p:not(.warm-manage-dialog__error) { margin-bottom: 12px; }
+
+.warm-manage-dialog__error {
+  min-height: 0; margin: 8px 0 0 !important;
+  color: var(--warm-danger, #dc4545) !important; font-size: 12px !important; line-height: 20px !important;
+}
+.warm-manage-dialog__error:empty { display: none; }
+.warm-manage-dialog__actions {
+  display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 24px;
+}
+.warm-manage-dialog__actions button {
+  display: inline-flex; min-width: 82px; min-height: 38px; align-items: center; justify-content: center;
+  padding: 8px 16px; border: 1px solid var(--warm-border); border-radius: 8px;
+  background: var(--warm-bg); color: var(--warm-muted); font-family: var(--warm-font);
+  font-size: 16px; font-weight: 500; line-height: 20px; cursor: pointer;
+  transition: color .2s ease, border-color .2s ease, background-color .2s ease, opacity .2s ease;
+}
+.warm-manage-dialog__actions button:hover:not(:disabled) {
+  border-color: var(--warm-accent); background: var(--warm-surface); color: var(--warm-text);
+}
+.warm-manage-dialog__actions [data-warm-dialog-confirm] {
+  border-color: var(--warm-accent); background: var(--warm-accent); color: #fff;
+}
+.warm-manage-dialog__actions [data-warm-dialog-confirm]:hover:not(:disabled) { filter: brightness(.92); }
+.warm-manage-dialog__actions button:disabled { cursor: not-allowed; opacity: .4; }
+@media (max-width: 639px) {
+  .warm-manage-dialog__panel { padding: 26px 18px 20px; }
+  .warm-manage-dialog__actions { gap: 8px; }
+  .warm-manage-dialog__actions button { min-width: 76px; padding-inline: 12px; }
 }
 
-.warm-prose pre.mermaid_default svg,
-.warm-prose pre.mermaid_dark svg {
-  display: block;
+
+.warm-header {
+  position: relative;
+  z-index: 40;
+}
+
+/* 1119d 顶部快捷按键布局与明暗切换：保留 OXN 配色变量。 */
+.warm-header__right {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.warm-header__tools {
+  position: absolute;
+  top: 16px;
+  right: var(--warm-gutter);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-height: 32px;
+}
+
+/* Place quick actions beside navigation only when the measured row fits. */
+.warm-header--tools-inline .warm-header__right {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+.warm-header--tools-inline .warm-header__tools {
+  position: static;
+  top: auto;
+  right: auto;
+  z-index: auto;
+  flex: 0 0 auto;
+}
+
+.warm-header--tools-inline .warm-nav {
+  flex-wrap: nowrap;
   width: max-content;
-  max-width: none;
-  height: auto;
-  margin-inline: auto;
 }
 
-/*
- * Mermaid measures SVG geometry synchronously while rendering. The global
- * reduced-motion rule above applies a non-zero transition duration to every
- * theme element; transitions on SVG nodes/paths can therefore inflate the
- * measured viewBox before those transitions settle. Keep the entire diagram
- * subtree geometry immediate, not only foreignObject labels.
- */
-.warm-prose pre.mermaid_default svg,
-.warm-prose pre.mermaid_default svg *,
-.warm-prose pre.mermaid_default svg *::before,
-.warm-prose pre.mermaid_default svg *::after,
-.warm-prose pre.mermaid_dark svg,
-.warm-prose pre.mermaid_dark svg *,
-.warm-prose pre.mermaid_dark svg *::before,
-.warm-prose pre.mermaid_dark svg *::after {
-  transition: none !important;
+.warm-theme-control {
+  position: relative;
+  display: inline-flex;
 }
 
-/* Rehype heading permalinks: keep the anchor available without making the title noisy. */
-.warm-prose .warm-heading-anchor {
-  display: none !important;
-  margin-left: .45em;
-  color: var(--warm-faint);
-  font-size: .62em;
-  font-weight: 400;
-  line-height: 1;
-  opacity: .5;
-  text-decoration: none;
-  vertical-align: middle;
-  transition: color 160ms ease, opacity 160ms ease;
+/* Keep quick-action order stable in both header layouts. */
+.warm-header__tools > .warm-theme-control {
+  order: 1;
 }
 
-.warm-prose h2:hover .warm-heading-anchor,
-.warm-prose h3:hover .warm-heading-anchor,
-.warm-prose h4:hover .warm-heading-anchor,
-.warm-prose .warm-heading-anchor:hover {
+.warm-header__tools > [data-warm-search-open] {
+  order: 2;
+}
+
+.warm-header__tools > .warm-nav__account {
+  order: 3;
+}
+
+.warm-theme-trigger svg[hidden] {
+  display: none;
+}
+
+.warm-theme-menu {
+  position: absolute;
+  top: 0;
+  right: calc(100% + 8px);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--warm-border);
+  border-radius: 8px;
+  background: var(--warm-bg);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 8%);
+  white-space: nowrap;
+}
+
+.warm-theme-menu[hidden] {
+  display: none;
+}
+
+.warm-theme-menu button {
+  display: inline-flex;
+  width: 32px;
+  min-width: 32px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--warm-muted);
+  cursor: pointer;
+}
+
+.warm-theme-menu button svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+.warm-theme-menu button[aria-pressed="true"],
+.warm-theme-menu button:hover {
+  background: var(--warm-hover);
   color: var(--warm-accent);
-  opacity: 1;
-  text-decoration: none;
 }
 
-/* Rin-style dual Mermaid variants: keep both source nodes in the document and
-   switch visibility with the active page theme. */
-.warm-prose pre.mermaid_default {
-  display: block;
+
+
+@media (max-width: 639px) {
+  .warm-header__right { width: 100%; align-items: stretch; }
+  .warm-header__tools { top: 12px; justify-content: flex-end; }
 }
-.warm-prose pre.mermaid_dark {
-  display: none;
+
+/* ========================================
+   Warm 暗黑主题：统一页面、正文与交互配色
+   仅切换颜色，不改变现有布局与尺寸
+   ======================================== */
+.dark {
+  color-scheme: dark;
+  --warm-bg: #171819;
+  --warm-surface: #202224;
+  --warm-surface-strong: #292c2f;
+  --warm-text: #e8e6e3;
+  --warm-body: #d0ceca;
+  --warm-muted: #aaa7a1;
+  --warm-faint: #85827d;
+  --warm-border: #383a3c;
+  --warm-accent: #c2b6a8;
+  --warm-hover: #242729;
 }
-html.dark .warm-prose pre.mermaid_default,
-body.dark .warm-prose pre.mermaid_default {
-  display: none;
+
+.dark html,
+html.dark {
+  background: var(--warm-bg);
+  color: var(--warm-text);
 }
-html.dark .warm-prose pre.mermaid_dark,
-body.dark .warm-prose pre.mermaid_dark {
-  display: block;
+
+.dark body.warm-theme {
+  background: var(--warm-bg);
+  color: var(--warm-text);
+}
+
+.dark .warm-theme ::selection {
+  background: #77716a;
+  color: #fff;
+}
+
+.dark .warm-brand__title,
+.dark .warm-prose strong,
+.dark .warm-prose h1,
+.dark .warm-prose h2,
+.dark .warm-prose h3,
+.dark .warm-prose h4,
+.dark .warm-prose h5,
+.dark .warm-prose h6,
+.dark .warm-empty h1,
+.dark .warm-empty h2,
+.dark .warm-not-found h1 {
+  color: var(--warm-text);
+}
+
+.dark .warm-nav__link,
+.dark .warm-nav__dropdown > summary {
+  color: var(--warm-muted) !important;
+}
+
+.dark .warm-nav__link:hover,
+.dark .warm-nav__dropdown:hover > summary {
+  background: var(--warm-hover);
+  color: var(--warm-text) !important;
+}
+
+.dark .warm-nav__link.is-active,
+.dark .warm-nav__dropdown.is-active > summary {
+  background: #45494c;
+  color: #f1efec !important;
+}
+
+.dark .warm-nav__menu {
+  border: 1px solid var(--warm-border);
+  background: var(--warm-surface);
+}
+
+.dark .warm-nav__menu a {
+  color: var(--warm-muted);
+}
+
+.dark .warm-nav__menu a:hover {
+  background: var(--warm-hover);
+  color: var(--warm-text);
+}
+
+.dark .warm-stream-item:hover {
+  background: var(--warm-hover);
+}
+
+.dark .warm-post-card h2 a,
+.dark .warm-topic-filter a,
+.dark .warm-prose a {
+  color: #d0c4b6;
+}
+
+.dark .warm-post-card:hover h2 a,
+.dark .warm-prose a:hover {
+  color: #f0e8df;
+}
+
+.dark .warm-prose a {
+  text-decoration-color: #625c55;
+}
+
+.dark .warm-prose a:hover {
+  text-decoration-color: #b8aa9b;
+}
+
+.dark .warm-note__content {
+  color: var(--warm-body);
+}
+
+.dark .warm-note__content hr,
+.dark .warm-prose hr {
+  background: var(--warm-border);
+}
+
+.dark .warm-prose code {
+  background: var(--warm-surface-strong);
+  color: #e0d8cf;
+}
+
+.dark .warm-prose pre {
+  background: var(--warm-surface);
+  color: #d8d5d0;
+}
+
+.dark .warm-prose blockquote,
+.dark .warm-note__content blockquote {
+  border-left-color: #55514c;
+  background: #202224;
+  color: #c4beb6;
+}
+
+.dark .warm-prose blockquote > strong:first-child {
+  color: var(--warm-text);
+}
+
+.dark .warm-prose table,
+.dark .warm-prose table th,
+.dark .warm-prose table td {
+  border-color: var(--warm-border);
+}
+
+.dark .warm-prose table th {
+  background: #25292c;
+  color: var(--warm-text);
+}
+
+.dark .warm-prose table td {
+  background: #1b1d1f;
+  color: var(--warm-body);
+}
+
+.dark .warm-prose table tr:nth-child(even) td {
+  background: #202326;
+}
+
+.dark .warm-pagination a,
+.dark .warm-comment-pagination a {
+  color: var(--warm-muted);
+}
+
+.dark .warm-pagination a:hover,
+.dark .warm-pagination a.is-current,
+.dark .warm-comment-pagination a:hover,
+.dark .warm-comment-pagination a.is-current {
+  background: var(--warm-surface-strong);
+  color: var(--warm-text);
+}
+
+.dark .warm-compact-form__input,
+.dark .warm-search-input,
+.dark .warm-manage-dialog__input {
+  border-color: var(--warm-border);
+  background: var(--warm-surface);
+  color: var(--warm-text);
+}
+
+.dark .warm-compact-form__input::placeholder,
+.dark .warm-search-input::placeholder,
+.dark .warm-manage-dialog__input::placeholder {
+  color: var(--warm-faint);
+}
+
+.dark .warm-theme-menu {
+  border-color: var(--warm-border);
+  background: var(--warm-surface);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 28%);
+}
+
+.dark .warm-theme-menu button {
+  color: var(--warm-muted);
+}
+
+.dark .warm-theme-menu button[aria-pressed="true"],
+.dark .warm-theme-menu button:hover {
+  background: var(--warm-surface-strong);
+  color: var(--warm-text);
+}
+
+.dark .warm-search-dialog__panel {
+  border-color: var(--warm-border);
+  background: var(--warm-surface);
+  color: var(--warm-text);
+}
+
+.dark .warm-search-dialog__panel h2,
+.dark .warm-manage-dialog__panel h2,
+.dark .warm-manage-dialog__panel [data-warm-dialog-title] {
+  color: var(--warm-body);
+}
+
+.dark .warm-search-input {
+  color: var(--warm-text);
+}
+
+.dark .warm-search-input {
+  border-color: var(--warm-border);
+  background: #191b1d;
+}
+
+.dark .warm-search-dialog__close {
+  color: var(--warm-muted);
+}
+
+.dark .warm-search-dialog__close:hover {
+  background: var(--warm-surface-strong);
+  color: var(--warm-text);
+}
+
+.dark .warm-footer,
+.dark .warm-footer a,
+.dark .warm-footer__tagline {
+  color: var(--warm-muted);
+}
+
+.dark .warm-footer a:hover {
+  color: var(--warm-text);
+}
+
+.dark .warm-note__attachment {
+  background: var(--warm-surface);
+  color: var(--warm-body);
+}
+
+.dark .warm-note__attachment-ext {
+  background: var(--warm-surface-strong);
+  color: var(--warm-muted);
+}
+
+.dark .warm-note__media-name {
+  color: var(--warm-muted);
+}
+
+.dark .warm-note__images img {
+  background: var(--warm-surface-strong);
+}
+
+.dark .warm-search-trigger {
+  color: var(--warm-muted);
+}
+
+.dark .warm-search-trigger:hover,
+.dark .warm-search-trigger:focus-visible {
+  background: var(--warm-hover);
+  color: var(--warm-text);
+}
+
+.dark .warm-prose input[type="checkbox"],
+.dark .warm-note__content input[type="checkbox"] {
+  accent-color: #b7aa9b;
+}
+
+.dark .warm-prose del,
+.dark .warm-note__content del {
+  color: var(--warm-faint);
+}
+
+.dark .warm-prose mark,
+.dark .warm-note__content mark {
+  background: #5a4b2e;
+  color: #f3e4bd;
+}
+
+.dark .warm-prose kbd,
+.dark .warm-note__content kbd {
+  border-color: #4b4d4f;
+  background: var(--warm-surface-strong);
+  color: var(--warm-text);
+}
+
+.dark .warm-prose figcaption,
+.dark .warm-prose caption {
+  color: var(--warm-faint);
+}
+
+.dark .warm-prose iframe,
+.dark .warm-note__content iframe {
+  border-color: var(--warm-border);
+}
+
+.dark .warm-prose .warm-heading-anchor {
+  color: var(--warm-faint);
+}
+
+.dark .warm-prose .warm-heading-anchor:hover {
+  color: var(--warm-text);
+}
+
+/* Dark-mode contrast audit: cover theme elements with fixed light-mode text colors. */
+.dark .warm-article__header h1,
+.dark .warm-empty h1,
+.dark .warm-empty h2,
+.dark .warm-not-found h1 {
+  color: var(--warm-text);
+}
+
+.dark .warm-article__summary {
+  color: var(--warm-muted);
+}
+
+.dark .warm-note__content h1,
+.dark .warm-note__content h2,
+.dark .warm-note__content h3,
+.dark .warm-note__content h4,
+.dark .warm-note__content h5,
+.dark .warm-note__content h6 {
+  color: var(--warm-text);
+}
+
+.dark .warm-prose .markdown-alert,
+.dark .warm-note__content .markdown-alert {
+  color: var(--warm-body);
+}
+
+.dark .warm-prose .markdown-alert-note .markdown-alert-title,
+.dark .warm-note__content .markdown-alert-note .markdown-alert-title {
+  color: #8db9e5;
+}
+
+.dark .warm-prose .markdown-alert-note,
+.dark .warm-note__content .markdown-alert-note {
+  border-left-color: #8db9e5;
+}
+
+.dark .warm-prose .markdown-alert-tip .markdown-alert-title,
+.dark .warm-note__content .markdown-alert-tip .markdown-alert-title {
+  color: #91c99a;
+}
+
+.dark .warm-prose .markdown-alert-tip,
+.dark .warm-note__content .markdown-alert-tip {
+  border-left-color: #91c99a;
+}
+
+.dark .warm-prose .markdown-alert-warning .markdown-alert-title,
+.dark .warm-note__content .markdown-alert-warning .markdown-alert-title {
+  color: #e3c16c;
+}
+
+.dark .warm-prose .markdown-alert-warning,
+.dark .warm-note__content .markdown-alert-warning {
+  border-left-color: #e3c16c;
+}
+
+.dark .warm-prose .markdown-alert-important .markdown-alert-title,
+.dark .warm-note__content .markdown-alert-important .markdown-alert-title,
+.dark .warm-prose .markdown-alert-important,
+.dark .warm-note__content .markdown-alert-important {
+  color: rgb(192, 132, 252);
+  border-left-color: rgb(192, 132, 252);
+}
+
+.dark .warm-prose .markdown-alert-caution .markdown-alert-title,
+.dark .warm-note__content .markdown-alert-caution .markdown-alert-title,
+.dark .warm-prose .markdown-alert-caution,
+.dark .warm-note__content .markdown-alert-caution {
+  color: rgb(248, 113, 113);
+  border-left-color: rgb(248, 113, 113);
+}
+
+.dark .warm-compact-form__submit,
+.dark .warm-comment-form button,
+.dark .warm-search-submit,
+.dark .warm-manage-dialog__actions [data-warm-dialog-confirm] {
+  color: #171819;
+}
+
+
+/* Keep the admin-entry link the same muted color as the other header actions. */
+.warm-theme .warm-header__tools > a.warm-nav__account {
+  color: var(--warm-muted);
+}
+
+.warm-theme .warm-header__tools > a.warm-nav__account:hover,
+.warm-theme .warm-header__tools > a.warm-nav__account:focus-visible {
+  color: var(--warm-accent);
+}
+
+.dark .warm-theme .warm-header__tools > a.warm-nav__account {
+  color: var(--warm-muted);
+}
+
+.dark .warm-theme .warm-header__tools > a.warm-nav__account:hover,
+.dark .warm-theme .warm-header__tools > a.warm-nav__account:focus-visible {
+  color: var(--warm-text);
+}
+
+
+/* Dark mode: unify theme headings and emphasized body text to the softer body tone. */
+.dark .warm-brand__title,
+.dark .warm-post-card h2 a,
+.dark .warm-post-card:hover h2 a,
+.dark .warm-article__header h1,
+.dark .warm-empty h1,
+.dark .warm-empty h2,
+.dark .warm-not-found h1,
+.dark .warm-prose h1,
+.dark .warm-prose h2,
+.dark .warm-prose h3,
+.dark .warm-prose h4,
+.dark .warm-prose h5,
+.dark .warm-prose h6,
+.dark .warm-note__content h1,
+.dark .warm-note__content h2,
+.dark .warm-note__content h3,
+.dark .warm-note__content h4,
+.dark .warm-note__content h5,
+.dark .warm-note__content h6,
+.dark .warm-prose strong,
+.dark .warm-prose b,
+.dark .warm-note__content strong,
+.dark .warm-note__content b,
+.dark .warm-prose blockquote > strong:first-child,
+.dark .warm-prose table th {
+  color: var(--warm-body);
 }

@@ -1,32 +1,64 @@
-
 import type { ThemeBaseProps, ThemePostProps } from '@/lib/theme-props';
-import { normalizeOptimizeParams } from './warm-image';
-import { escapeHtml, formatDate } from 'typecho/plugin-sdk';
-import sanitizeHtml from 'sanitize-html';
+import { loadThemeConfig } from '@/lib/theme';
+import { normalizeOptimizeParams, optimizeImageUrl, optimizeContentImages } from '@/lib/image-transform';
+import { formatDate, generateSlug } from '@/lib/content';
+import { escapeHtml } from '@/lib/escape';
 import postcss from 'postcss';
 
-export const WARM_THEME_ID = 'typecho-theme-warm-cy';
+/**
+ * Convert the theme's friendly image parameters to EdgeOne's URL syntax.
+ * Width/height are translated to eo-img.resize; format is translated to
+ * eo-img.format. Quality remains untouched because EdgeOne quality is
+ * configured in its image-slimming settings, not as a URL transform option.
+ */
+function edgeOneImageParams(value: unknown): string {
+  const clean = normalizeOptimizeParams(value);
+  if (!clean) return '';
 
-const DEFAULT_WARM_SETTINGS: Record<string, unknown> = {
-  pinnedIds: '',
-  footerCustomHtml: '',
-  articleDeclarationHtml: '',
-  continuousLoadMode: 'manual',
-  commentComponentLoadMode: 'manual',
-  commentInitialLoadMode: 'manual',
-  imageOptimizeParams: '',
-  thumbOptimizeParams: '',
-  ...Object.fromEntries(
-    Array.from({ length: 10 }, (_, index) => {
-      const suffix = String(index + 1).padStart(2, '0');
-      return [
-        [`linktxt${suffix}`, ''],
-        [`links${suffix}`, ''],
-        [`linkblank${suffix}`, false],
-      ];
-    }).flat(),
-  ),
-};
+  const pairs = clean.split('&').filter(Boolean);
+  const hasNativeResize = pairs.some(pair => /^eo-img\.resize=/i.test(pair));
+  const hasNativeFormat = pairs.some(pair => /^eo-img\.format=/i.test(pair));
+  const widthPair = pairs.find(pair => /^width=\d{1,5}$/i.test(pair));
+  const heightPair = pairs.find(pair => /^height=\d{1,5}$/i.test(pair));
+  const formatPair = pairs.find(pair => /^format=[a-z0-9-]+$/i.test(pair));
+  const width = widthPair ? Number(widthPair.slice(widthPair.indexOf('=') + 1)) : 0;
+  const height = heightPair ? Number(heightPair.slice(heightPair.indexOf('=') + 1)) : 0;
+  const validWidth = width > 0 && width <= 10000 ? width : 0;
+  const validHeight = height > 0 && height <= 10000 ? height : 0;
+  const format = formatPair?.slice(formatPair.indexOf('=') + 1).toLowerCase();
+  const canMapFormat = !!format && /^(webp|avif|jpg|jpeg|png)$/.test(format);
+
+  const mappedWidth = !hasNativeResize && validWidth > 0;
+  const mappedHeight = !hasNativeResize && validHeight > 0;
+  const mappedFormat = !hasNativeFormat && canMapFormat;
+  const remaining = pairs.filter(pair => {
+    if (mappedWidth && /^width=/i.test(pair) && /^width=\d{1,5}$/i.test(pair)) return false;
+    if (mappedHeight && /^height=/i.test(pair) && /^height=\d{1,5}$/i.test(pair)) return false;
+    if (mappedFormat && /^format=/i.test(pair) && /^format=[a-z0-9-]+$/i.test(pair)) return false;
+    return true;
+  });
+
+  if (mappedWidth || mappedHeight) {
+    const resize = [
+      ...(mappedWidth ? ['w', String(validWidth)] : []),
+      ...(mappedHeight ? ['h', String(validHeight)] : []),
+    ].join('%2F');
+    remaining.push('eo-img.resize=' + resize);
+  }
+  if (mappedFormat) remaining.push('eo-img.format=' + format);
+  return remaining.join('&');
+}
+
+/** Theme-local wrappers keep the core image transformer unchanged. */
+export function warmOptimizeImageUrl(url: string, params: string, siteUrl: string): string {
+  return optimizeImageUrl(url, edgeOneImageParams(params), siteUrl);
+}
+
+export function warmOptimizeContentImages(html: string, params: string, siteUrl: string): string {
+  return optimizeContentImages(html, edgeOneImageParams(params), siteUrl);
+}
+
+export const WARM_THEME_ID = 'typecho-theme-warm';
 
 export type WarmSection = 'home' | 'articles' | 'notes' | 'about' | 'none';
 export type WarmContinuousLoadMode = 'manual' | 'auto-2' | 'infinite';
@@ -38,6 +70,13 @@ export interface WarmSettings {
   footerLinks: Array<{ text: string; url: string; newWindow: boolean }>;
   footerCustomHtml: string;
   articleDeclarationHtml: string;
+  showThemeToggleButton: boolean;
+  showHomeSearchButton: boolean;
+  showAdminEntryButton: boolean;
+  showCommentManagementButtons: boolean;
+  githubUrl: string;
+  socialUrl: string;
+  email: string;
   continuousLoadMode: WarmContinuousLoadMode;
   commentComponentLoadMode: WarmCommentComponentLoadMode;
   commentInitialLoadMode: WarmCommentInitialLoadMode;
@@ -45,78 +84,122 @@ export interface WarmSettings {
   imageOptimizeParams: string;
   /** Query params appended to thumbnail URLs; falls back to imageOptimizeParams when empty. */
   thumbOptimizeParams: string;
-  markdownMathEngine: 'katex' | 'mathjax';
-  /** Rehype TOC is opt-in to avoid duplicating a theme-provided TOC. */
-  markdownTocEnabled: boolean;
-}
-
-export interface WarmCyFeatureSettings {
-  showCommentManagementButtons: boolean;
-  showHomeSearchButton: boolean;
-}
-
-export function warmCyFeatureSettings(options: ThemeBaseProps['options']): WarmCyFeatureSettings {
-  let saved: Record<string, unknown> = {};
-  const raw = options?.['plugin:typecho-plugin-warm-cy'];
-  if (typeof raw === 'string' && raw) {
-    try {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        saved = parsed as Record<string, unknown>;
-      }
-    } catch {
-      saved = {};
-    }
-  }
-  const enabled = (value: unknown) => value === undefined || value === null || value === ''
-    ? true
-    : !(value === false || value === 0 || value === '0');
-  return {
-    showCommentManagementButtons: enabled(saved.showCommentManagementButtons),
-    showHomeSearchButton: enabled(saved.showHomeSearchButton),
-  };
 }
 
 export function warmSettings(options: ThemeBaseProps['options']): WarmSettings {
+  // Existing OXN appearance controls retain their current Warm namespace.
+  const settings = loadThemeConfig(options, WARM_THEME_ID);
+  // CY-derived controls are stored under the OXN theme's own configuration.
+  const oxnSettings = loadThemeConfig(options, 'typecho-theme-oxn');
   const savedSettings = readSavedWarmSettings(options);
-  const pluginSettings = readSavedPluginSettings(options, 'typecho-plugin-warm-cy') || {};
-  const settings = { ...DEFAULT_WARM_SETTINGS, ...(savedSettings || {}) };
-  const moved = (key: string) => Object.prototype.hasOwnProperty.call(pluginSettings, key) ? pluginSettings[key] : settings[key];
-  const rehypeSettings = readSavedPluginSettings(options, 'typecho-plugin-markdown-rehype');
+  const savedOxnSettings = readSavedThemeSettings(options, 'typecho-theme-oxn');
+  const hasSavedSetting = (saved: Record<string, unknown> | null, key: string) =>
+    Object.prototype.hasOwnProperty.call(saved || {}, key);
+  const savedContinuousLoadMode = hasSavedSetting(savedOxnSettings, 'continuousLoadMode')
+    ? oxnSettings.continuousLoadMode
+    : hasSavedSetting(savedSettings, 'continuousLoadMode')
+      ? settings.continuousLoadMode
+      : oxnSettings.continuousLoadMode ?? settings.continuousLoadMode;
+  const preferredSetting = (key: string) =>
+    hasSavedSetting(savedOxnSettings, key)
+      ? oxnSettings[key]
+      : hasSavedSetting(savedSettings, key)
+        ? settings[key]
+        : oxnSettings[key] ?? settings[key];
   const legacyCommentMode = savedSettings?.commentInitialLoadMode;
-  const componentLoadMode = Object.prototype.hasOwnProperty.call(savedSettings || {}, 'commentComponentLoadMode')
-    ? settings.commentComponentLoadMode
-    : legacyCommentMode === 'dwell' || legacyCommentMode === 'dwell-auto-2'
-      ? 'dwell'
-      : settings.commentComponentLoadMode;
-  const imageOptimizeParams = normalizeOptimizeParams(settings.imageOptimizeParams);
-  const pinnedIds = parsePinnedIds(moved('pinnedIds'));
-  const footerCustomValue = moved('footerCustomHtml');
-  const declarationValue = moved('articleDeclarationHtml');
-  const footerCustomHtml = typeof footerCustomValue === 'string' ? footerCustomValue : '';
-  const articleDeclarationHtml = typeof declarationValue === 'string' ? declarationValue : '';
+  const componentLoadMode = hasSavedSetting(savedOxnSettings, 'commentComponentLoadMode')
+    ? oxnSettings.commentComponentLoadMode
+    : hasSavedSetting(savedSettings, 'commentComponentLoadMode')
+      ? settings.commentComponentLoadMode
+      : legacyCommentMode === 'dwell' || legacyCommentMode === 'dwell-auto-2'
+        ? 'dwell'
+        : oxnSettings.commentComponentLoadMode ?? settings.commentComponentLoadMode;
+  const imageOptimizeParams = normalizeOptimizeParams(preferredSetting('imageOptimizeParams'));
+  const pinnedIds = parsePinnedIds(oxnSettings.pinnedIds);
+  const footerCustomHtml = typeof oxnSettings.footerCustomHtml === 'string' ? oxnSettings.footerCustomHtml : '';
+  const articleDeclarationHtml = typeof oxnSettings.articleDeclarationHtml === 'string' ? oxnSettings.articleDeclarationHtml : '';
   const footerLinks = Array.from({ length: 10 }, (_, index) => {
     const suffix = String(index + 1).padStart(2, '0');
-    const textValue = moved(`linktxt${suffix}`);
+    const textValue = oxnSettings[`linktxt${suffix}`];
     const text = typeof textValue === 'string' ? textValue.trim() : '';
-    const url = safeExternalUrl(moved(`links${suffix}`));
-    const newWindowValue = moved(`linkblank${suffix}`);
+    const url = safeFooterUrl(oxnSettings[`links${suffix}`]);
+    const newWindowValue = oxnSettings[`linkblank${suffix}`];
     return { text, url, newWindow: newWindowValue === true || newWindowValue === '1' || newWindowValue === 1 };
   }).filter(link => link.text && link.url);
+  const enabled = (value: unknown) => value === undefined || value === null || value === ''
+    ? true
+    : !(value === false || value === 0 || value === '0');
   return {
     pinnedIds,
     footerLinks,
     footerCustomHtml,
     articleDeclarationHtml,
-    continuousLoadMode: normalizeContinuousLoadMode(settings.continuousLoadMode),
+    showThemeToggleButton: enabled(oxnSettings.showThemeToggleButton),
+    showHomeSearchButton: enabled(oxnSettings.showHomeSearchButton),
+    showAdminEntryButton: enabled(oxnSettings.showAdminEntryButton),
+    showCommentManagementButtons: enabled(oxnSettings.showCommentManagementButtons),
+    githubUrl: safeExternalUrl(settings.githubUrl),
+    socialUrl: safeExternalUrl(settings.socialUrl),
+    email: safeEmail(settings.email),
+    continuousLoadMode: normalizeContinuousLoadMode(savedContinuousLoadMode),
     commentComponentLoadMode: normalizeCommentComponentLoadMode(componentLoadMode),
-    commentInitialLoadMode: normalizeCommentInitialLoadMode(settings.commentInitialLoadMode),
+    commentInitialLoadMode: normalizeCommentInitialLoadMode(preferredSetting('commentInitialLoadMode')),
     imageOptimizeParams,
-    thumbOptimizeParams: normalizeOptimizeParams(settings.thumbOptimizeParams) || imageOptimizeParams,
-    markdownMathEngine: rehypeSettings?.mathEngine === 'mathjax' ? 'mathjax' : 'katex',
-    // Rehype TOC is controlled only by the Markdown Rehype plugin setting.
-    markdownTocEnabled: rehypeSettings?.tocEnabled === true || rehypeSettings?.tocEnabled === '1',
+    thumbOptimizeParams: normalizeOptimizeParams(preferredSetting('thumbOptimizeParams')) || imageOptimizeParams,
   };
+}
+
+function safeFooterUrl(value: unknown): string {
+  if (typeof value !== 'string' || !value.trim()) return '';
+  const input = value.trim();
+
+  if (/^mailto:/i.test(input)) {
+    const address = input.slice(input.indexOf(':') + 1).trim();
+    if (!address || /[\s<>]/.test(address) || !address.includes('@')) return '';
+    try {
+      const url = new URL(`mailto:${address}`);
+      return url.protocol === 'mailto:' && url.pathname.includes('@') ? url.toString() : '';
+    } catch {
+      return '';
+    }
+  }
+
+  if (/^https?:\/\//i.test(input)) {
+    try {
+      const url = new URL(input);
+      return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : '';
+    } catch {
+      return '';
+    }
+  }
+
+  if (input.startsWith('//')) {
+    try {
+      const url = new URL(`https:${input}`);
+      return url.protocol === 'https:' ? url.toString() : '';
+    } catch {
+      return '';
+    }
+  }
+
+  const isDomain = /^(?:localhost|(?:[a-z0-9-]+\.)+[a-z]{2,})(?::\d+)?(?:[/?#].*)?$/i.test(input);
+  if (isDomain) {
+    try {
+      const url = new URL(`https://${input}`);
+      return url.protocol === 'https:' ? url.toString() : '';
+    } catch {
+      return '';
+    }
+  }
+
+  if (/^[a-z][a-z\d+.-]*:/i.test(input)) return '';
+  try {
+    const path = input.startsWith('/') ? input : `/${input.replace(/^\.\/+/, '')}`;
+    const url = new URL(path, 'https://relative.invalid');
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return '';
+  }
 }
 
 /**
@@ -278,85 +361,6 @@ function escapeRegExp(value: string): string {
 }
 
 /**
- * Normalize and constrain an administrator-authored HTML fragment.
- *
- * HTML is parsed and repaired by sanitize-html. Style blocks are parsed as CSS,
- * scoped to this declaration and emitted after the theme stylesheet so author
- * declarations can override theme defaults without escaping the container.
- */
-export function sanitizeArticleDeclarationHtml(html: string): string {
-  const sanitized = sanitizeHtml(html, {
-    allowedTags: [
-      'a', 'abbr', 'b', 'blockquote', 'br', 'caption', 'cite', 'code', 'dd', 'del',
-      'div', 'dl', 'dt', 'em', 'figcaption', 'figure', 'h1', 'h2', 'h3', 'h4',
-      'h5', 'h6', 'hr', 'i', 'img', 'ins', 'kbd', 'li', 'mark', 'ol', 'p',
-      'pre', 'q', 's', 'samp', 'small', 'span', 'style', 'sub', 'summary',
-      'sup', 'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'tr', 'u', 'ul',
-    ],
-    allowedAttributes: {
-      '*': ['class', 'id', 'title', 'role', 'style'],
-      a: ['href', 'target', 'rel'],
-      img: ['src', 'alt', 'width', 'height', 'loading'],
-      td: ['colspan', 'rowspan', 'headers'],
-      th: ['colspan', 'rowspan', 'scope', 'headers'],
-    },
-    allowedSchemes: ['http', 'https', 'mailto', 'tel'],
-    allowedSchemesByTag: {
-      img: ['http', 'https', 'data'],
-    },
-    allowProtocolRelative: false,
-  });
-
-  const cssBlocks: string[] = [];
-  let htmlWithPlaceholders = sanitized.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, (_match, css: string) => {
-    const token = 'WARM_DECLARATION_STYLE_BLOCK_' + cssBlocks.length + '_TOKEN';
-    cssBlocks.push(css);
-    return token;
-  });
-
-  let inlineIndex = 0;
-  htmlWithPlaceholders = htmlWithPlaceholders.replace(/<([a-z][\w:-]*)([^>]*)>/gi, (tag, name: string, rawAttributes: string) => {
-    const styleMatch = /\sstyle="([^"]*)"/i.exec(rawAttributes);
-    if (!styleMatch) return tag;
-
-    const styleValue = styleMatch[1];
-    const className = 'warm-declaration-inline-' + (++inlineIndex);
-    try {
-      const parsed = postcss.parse('.inline { ' + styleValue + ' }');
-      const declarations: string[] = [];
-      parsed.walkDecls(decl => {
-        decl.important = false;
-        if (!/expression\s*\(|javascript\s*:|vbscript\s*:|behavior\s*:|-moz-binding/i.test(decl.value)) {
-          declarations.push(decl.toString());
-        }
-      });
-      if (declarations.length) cssBlocks.push('.' + className + ' { ' + declarations.join('; ') + ' }');
-    } catch {
-      // Malformed inline CSS is discarded rather than emitted unprocessed.
-    }
-
-    let attributes = rawAttributes.replace(styleMatch[0], '');
-    const classMatch = /\sclass="([^"]*)"/i.exec(attributes);
-    if (classMatch) {
-      attributes = attributes.replace(classMatch[0], ' class="' + classMatch[1] + ' ' + className + '"');
-    } else {
-      attributes += ' class="' + className + '"';
-    }
-    return '<' + name + attributes + '>';
-  });
-
-  const scopedCss = cssBlocks
-    .map(css => scopeArticleDeclarationCss(css))
-    .filter(Boolean)
-    .join('\n');
-  const restoredHtml = htmlWithPlaceholders.replace(/WARM_DECLARATION_STYLE_BLOCK_(\d+)_TOKEN/g, '');
-
-  return scopedCss
-    ? '<style>' + scopedCss + '</style>' + restoredHtml
-    : restoredHtml;
-}
-
-/**
  * Process CSS embedded in the site-wide footer HTML without changing its HTML,
  * scripts, or inline styles. Footer stylesheet selectors stay inside the custom
  * footer container and are emitted after the theme stylesheet.
@@ -393,7 +397,7 @@ export function renderArticleDeclaration(
   const expanded = template.replace(/\{(site\.name|site\.url|site\.description|post\.title|post\.url)\}/g, (_match, key: string) =>
     escapeHtml(replacements[key] ?? ''),
   );
-  return sanitizeArticleDeclarationHtml(expanded);
+  return expanded;
 }
 
 export function parsePinnedIds(value: unknown): number[] {
@@ -411,28 +415,20 @@ export function parsePinnedIds(value: unknown): number[] {
   return result;
 }
 
+
 function readSavedWarmSettings(options: ThemeBaseProps['options']): Record<string, unknown> | null {
-  const raw = options?.[`theme:${WARM_THEME_ID}`];
+  return readSavedThemeSettings(options, WARM_THEME_ID);
+}
+
+function readSavedThemeSettings(
+  options: ThemeBaseProps['options'],
+  themeId: string,
+): Record<string, unknown> | null {
+  const raw = options?.[`theme:${themeId}`];
   if (!raw) return null;
   try {
     const saved = typeof raw === 'string' ? JSON.parse(raw) : raw;
     return saved && typeof saved === 'object' && !Array.isArray(saved) ? saved as Record<string, unknown> : null;
-  } catch {
-    return null;
-  }
-}
-
-function readSavedPluginSettings(
-  options: ThemeBaseProps['options'],
-  pluginId: string,
-): Record<string, unknown> | null {
-  const raw = options?.[`plugin:${pluginId}`];
-  if (!raw) return null;
-  try {
-    const saved = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    return saved && typeof saved === 'object' && !Array.isArray(saved)
-      ? saved as Record<string, unknown>
-      : null;
   } catch {
     return null;
   }
@@ -457,89 +453,11 @@ export function normalizeCommentInitialLoadMode(value: unknown): WarmCommentInit
 
 export function safeExternalUrl(value: unknown): string {
   if (typeof value !== 'string' || !value.trim()) return '';
-
-  const input = value.trim();
-
-  // 邮件地址
-  if (/^mailto:/i.test(input)) {
-    const address = input.slice(input.indexOf(':') + 1).trim();
-    if (!address || /[\s<>]/.test(address) || !address.includes('@')) return '';
-
-    try {
-      const url = new URL(`mailto:${address}`);
-      return url.protocol === 'mailto:' && url.pathname.includes('@')
-        ? url.toString()
-        : '';
-    } catch {
-      return '';
-    }
-  }
-
-  // 完整 HTTP / HTTPS 地址
-  if (/^https?:\/\//i.test(input)) {
-    try {
-      const url = new URL(input);
-      return url.protocol === 'https:' || url.protocol === 'http:'
-        ? url.toString()
-        : '';
-    } catch {
-      return '';
-    }
-  }
-
-  // //example.com 形式的协议相对外部地址
-  if (input.startsWith('//')) {
-    try {
-      const url = new URL(`https:${input}`);
-      return url.protocol === 'https:' ? url.toString() : '';
-    } catch {
-      return '';
-    }
-  }
-
-  // 判断是否为未填写协议的外部域名
-  const isDomain = /^(?:localhost|(?:[a-z0-9-]+\.)+[a-z]{2,})(?::\d+)?(?:[/?#].*)?$/i.test(input);
-
-  if (isDomain) {
-    try {
-      const url = new URL(`https://${input}`);
-      return url.protocol === 'https:' ? url.toString() : '';
-    } catch {
-      return '';
-    }
-  }
-
-  // 拒绝其他协议，例如 javascript:、ftp:
-  if (/^[a-z][a-z\d+.-]*:/i.test(input)) return '';
-
-  // 普通路径按当前网站根目录解析
   try {
-    const path = input.startsWith('/')
-      ? input
-      : `/${input.replace(/^\.\/+/, '')}`;
-
-    const url = new URL(path, 'https://relative.invalid');
-
-    return `${url.pathname}${url.search}${url.hash}`;
+    const url = new URL(value.trim());
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : '';
   } catch {
     return '';
-  }
-}
-
-
-/** Match a navigation page by normalized pathname, never by substring. */
-export function isCurrentPageLink(permalink: string, currentPath: string, siteUrl: string): boolean {
-  try {
-    const site = new URL(siteUrl);
-    const target = new URL(permalink, site);
-    const current = new URL(currentPath, site);
-    if (target.origin !== site.origin || current.origin !== site.origin) return false;
-    const normalizePath = (pathname: string) => pathname.length > 1
-      ? pathname.replace(/\/+$/, '')
-      : pathname;
-    return normalizePath(target.pathname) === normalizePath(current.pathname);
-  } catch {
-    return false;
   }
 }
 
@@ -618,55 +536,36 @@ export function prepareArticleToc(html: string): { html: string; items: WarmTocI
 
     const level = Number(tag.slice(1)) as 2 | 3;
     const existing = TOC_EXISTING_ID_RE.exec(attrs)?.slice(1).find(Boolean)?.trim();
-    let id = existing || generateWarmSlug(text) || 'section-' + (items.length + 1);
+    let id = existing || generateSlug(text) || `section-${items.length + 1}`;
     const base = id;
     let suffix = 2;
-    while (used.has(id)) id = base + '-' + suffix++;
+    while (used.has(id)) id = `${base}-${suffix++}`;
     used.add(id);
     items.push({ id, text, level });
 
     if (existing) {
       if (existing === id) return match;
-      const rewrittenAttrs = attrs.replace(TOC_EXISTING_ID_RE, ' id="' + escapeHtml(id) + '"');
-      return '<' + tag + rewrittenAttrs + '>' + inner + '</' + tag + '>';
+      const rewrittenAttrs = attrs.replace(TOC_EXISTING_ID_RE, ` id="${escapeHtml(id)}"`);
+      return `<${tag}${rewrittenAttrs}>${inner}</${tag}>`;
     }
 
-    const suffixAttrs = attrs ? attrs + ' id="' + escapeHtml(id) + '"' : ' id="' + escapeHtml(id) + '"';
-    return '<' + tag + suffixAttrs + '>' + inner + '</' + tag + '>';
+    const suffixAttrs = attrs ? `${attrs} id="${escapeHtml(id)}"` : ` id="${escapeHtml(id)}"`;
+    return `<${tag}${suffixAttrs}>${inner}</${tag}>`;
   });
 
   if (items.length < TOC_MIN_ITEMS) return { html: nextHtml, items: [] };
   return { html: nextHtml, items };
 }
 
-function generateWarmSlug(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[^\w\u4e00-\u9fff\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .substring(0, 150);
-}
-
 function plainHeadingText(inner: string): string {
   return inner
-    .replace(/<a\b[^>]*class=["'][^"']*\bwarm-heading-anchor\b[^"']*["'][^>]*>[\s\S]*?<\/a>/gi, '')
-    .replace(/CYCYINLINE(?:BLOCK|CONTAINER|HTML)X[0-9a-f]+XEND/gi, ' ')
-    .replace(/CYCYINLINEATTRX[a-z][\w:-]*X[0-9a-f]+XEND/gi, ' ')
-    .replace(/CYCYCODESEGMENT\d+TOKEN/gi, ' ')
     .replace(/<[^>]*>/g, '')
     .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
     .replace(/\s+/g, ' ')
     .trim();
-}
-
-/** Preserve iframe tags and all author-supplied attributes verbatim. */
-export function renderWarmIframes(html: string): string {
-  return html;
 }
