@@ -27,6 +27,47 @@ export interface WordPressDatabaseWriteMetrics {
 
 export type WordPressImportContentType = 'post' | 'page' | 'note';
 
+export type WordPressImportDedupeField = 'title' | 'slug' | 'id';
+
+export function buildWordPressImportDedupeKey(
+  item: { title: string; slug: string; oldId: number },
+  fields: readonly WordPressImportDedupeField[],
+  sourceKey: string,
+  legacySource = false,
+): string {
+  return JSON.stringify(fields.map(field => {
+    if (field === 'title') return item.title;
+    if (field === 'slug') return item.slug;
+    return [item.oldId, legacySource ? '*' : sourceKey];
+  }));
+}
+
+
+
+/**
+ * Notes are stored with a generated slug rather than the WXR slug.
+ * makeUniqueSlug may append "-wp-<oldId>" (and a numeric suffix) when the
+ * generated note slug already exists. Normalize those stored forms so preview
+ * and import compare the same logical note slug on subsequent runs.
+ */
+function normalizeImportedNoteSlug(slug: string, oldId: number): string {
+  const base = 'note-' + oldId;
+  const storedSlugPattern = new RegExp('^note-' + oldId + '(?:-wp-' + oldId + '(?:-\\d+)?)?$', 'i');
+  return storedSlugPattern.test(slug) ? base : slug;
+}
+
+/**
+ * Posts and pages with an empty WordPress post_name are stored by the migration
+ * builder as post-<oldId>. Account for that generated slug during both preview
+ * and import so a blank source alias does not make the same item look new again.
+ * Collision suffixes are normalized only for rows carrying a WordPress ID marker.
+ */
+export function normalizeImportedPostSlug(slug: string, oldId: number): string {
+  const base = 'post-' + oldId;
+  const storedSlugPattern = new RegExp('^post-' + oldId + '(?:-wp-' + oldId + '(?:-\\d+)?)?$', 'i');
+  return storedSlugPattern.test(slug) ? base : slug;
+}
+
 function wordpressMetaType(domain: string): string | null {
   if (domain === 'category') return 'category';
   if (domain === 'post_tag') return 'tag';
@@ -189,6 +230,7 @@ async function buildDataset(
   source: WordPressExport,
   authorId: number,
   selectedTypes: readonly WordPressImportContentType[],
+  dedupeFields: readonly WordPressImportDedupeField[],
 ) {
   const selectedSource = selectWordPressImportItems(source, selectedTypes);
   const sourceKey = normalizeWordPressSource(source.siteUrl);
@@ -216,11 +258,11 @@ async function buildDataset(
   }
   const requiredMetaSlugs = [...new Set([...requiredMetaKeys].map(key => key.split('\u0000')[1]))];
   const selectedWordPressIds = [...new Set(selectedSource.items.map(item => item.oldId))];
-  const [maxContent, maxComment, maxMeta, slugRows, metaRows, postMarkerRows] = await Promise.all([
+  const [maxContent, maxComment, maxMeta, contentRows, metaRows, postMarkerRows] = await Promise.all([
     db.select({ value: sql<number>`coalesce(max(${schema.contents.cid}), 0)` }).from(schema.contents),
     db.select({ value: sql<number>`coalesce(max(${schema.comments.coid}), 0)` }).from(schema.comments),
     db.select({ value: sql<number>`coalesce(max(${schema.metas.mid}), 0)` }).from(schema.metas),
-    db.select({ slug: schema.contents.slug }).from(schema.contents),
+    db.select({ cid: schema.contents.cid, type: schema.contents.type, title: schema.contents.title, slug: schema.contents.slug }).from(schema.contents),
     requiredMetaSlugs.length
       ? Promise.all(splitIntoChunks(requiredMetaSlugs).map(slugs =>
         db.select({ mid: schema.metas.mid, type: schema.metas.type, slug: schema.metas.slug })
@@ -251,19 +293,51 @@ async function buildDataset(
     if (row.name === 'wordpress_post_id') wordpressIdByContentId.set(cid, Number(row.id));
   }
 
-  // Keep compatibility with imports made before source-aware markers existed.
-  // New imports are deduplicated by the pair (normalized source URL, WP post ID).
-  const legacyImportedIds = new Set<number>();
-  const importedSourceIds = new Set<string>();
-  for (const [cid, oldId] of wordpressIdByContentId) {
-    const existingSource = sourceByContentId.get(cid);
-    if (existingSource) importedSourceIds.add(`${existingSource}#${oldId}`);
-    else legacyImportedIds.add(oldId);
+  // Build composite keys once so analysis/import stay efficient on large databases.
+  // Legacy ID markers without a source remain compatible with any source URL.
+  const existingDedupeKeys = new Set<string>();
+  const existingAttachmentIdKeys = new Set<string>();
+  for (const row of contentRows) {
+    const cid = Number(row.cid);
+    const existing = {
+      title: String(row.title || ''),
+      slug: String(row.slug || ''),
+      oldId: wordpressIdByContentId.get(cid) || 0,
+    };
+    if (existing.oldId && row.type === 'note') {
+      existing.slug = normalizeImportedNoteSlug(existing.slug, existing.oldId);
+    } else if (existing.oldId && ['post', 'page', 'post_draft', 'page_draft'].includes(String(row.type))) {
+      existing.slug = normalizeImportedPostSlug(existing.slug, existing.oldId);
+    }
+    const existingSource = sourceByContentId.get(cid) || '';
+    if (row.type === 'attachment') {
+      existingAttachmentIdKeys.add(buildWordPressImportDedupeKey(existing, ['id'], existingSource));
+      if (!existingSource && existing.oldId) {
+        existingAttachmentIdKeys.add(buildWordPressImportDedupeKey(existing, ['id'], '', true));
+      }
+      continue;
+    }
+    existingDedupeKeys.add(buildWordPressImportDedupeKey(existing, dedupeFields, existingSource));
+    if (!existingSource && existing.oldId) {
+      existingDedupeKeys.add(buildWordPressImportDedupeKey(existing, dedupeFields, '', true));
+    }
   }
 
-  const pendingItems = selectedSource.items.filter(item =>
-    !legacyImportedIds.has(item.oldId) && !importedSourceIds.has(`${sourceKey}#${item.oldId}`),
-  );
+  const pendingItems = selectedSource.items.filter(item => {
+    if (item.postType === 'attachment') {
+      const idKey = buildWordPressImportDedupeKey(item, ['id'], sourceKey);
+      const legacyIdKey = buildWordPressImportDedupeKey(item, ['id'], '', true);
+      return !existingAttachmentIdKeys.has(idKey) && !existingAttachmentIdKeys.has(legacyIdKey);
+    }
+    const dedupeItem = item.postType === 'note'
+      ? { ...item, slug: normalizeImportedNoteSlug(`note-${item.oldId}`, item.oldId) }
+      : (item.postType === 'post' || item.postType === 'page') && !item.slug.trim()
+        ? { ...item, slug: normalizeImportedPostSlug('', item.oldId) }
+        : item;
+    const key = buildWordPressImportDedupeKey(dedupeItem, dedupeFields, sourceKey);
+    const legacyKey = buildWordPressImportDedupeKey(dedupeItem, dedupeFields, '', true);
+    return !existingDedupeKeys.has(key) && !existingDedupeKeys.has(legacyKey);
+  });
   const alreadyImported = selectedSource.items.length - pendingItems.length;
   const pendingSource: WordPressExport = { ...selectedSource, items: pendingItems };
 
@@ -271,7 +345,7 @@ async function buildDataset(
     maxContentId: Number(maxContent[0]?.value || 0),
     maxCommentId: Number(maxComment[0]?.value || 0),
     maxMetaId: Number(maxMeta[0]?.value || 0),
-    contentSlugs: slugRows.map(row => row.slug || '').filter(Boolean),
+    contentSlugs: contentRows.map(row => row.slug || '').filter(Boolean),
     metas: relevantMetaRows.map(row => ({
       mid: row.mid,
       type: row.type,
@@ -422,10 +496,11 @@ export async function previewWordPressImport(
   xml: string,
   authorId: number,
   selectedTypes: readonly WordPressImportContentType[] = ['post', 'page', 'note'],
+  dedupeFields: readonly WordPressImportDedupeField[] = ['id'],
 ): Promise<WordPressImportReport> {
   const source = parseWordPressExport(xml);
   const selectedSource = selectWordPressImportItems(source, selectedTypes);
-  const { dataset, alreadyImported } = await buildDataset(db, source, authorId, selectedTypes);
+  const { dataset, alreadyImported } = await buildDataset(db, source, authorId, selectedTypes, dedupeFields);
   return {
     siteTitle: source.siteTitle,
     totalItems: selectedSource.items.length,
@@ -441,10 +516,11 @@ export async function importWordPressExport(
   xml: string,
   authorId: number,
   selectedTypes: readonly WordPressImportContentType[] = ['post', 'page', 'note'],
+  dedupeFields: readonly WordPressImportDedupeField[] = ['id'],
 ): Promise<WordPressImportReport> {
   const source = parseWordPressExport(xml);
   const selectedSource = selectWordPressImportItems(source, selectedTypes);
-  const { dataset, alreadyImported } = await buildDataset(db, source, authorId, selectedTypes);
+  const { dataset, alreadyImported } = await buildDataset(db, source, authorId, selectedTypes, dedupeFields);
   const databaseWrite = dataset.contents.length
     ? await writeDataset(db, dataset)
     : undefined;

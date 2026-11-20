@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import init, { classifyWordPressImportError } from './index';
 import { wordpressImportAdminPageHtml } from './admin';
 import type { PluginInitContext } from 'typecho/plugin-sdk';
-import { addWordPressTermAncestors, mapWordPressContentStatus, normalizeWordPressSource, selectWordPressImportItems, summarizeD1BatchResults } from './service';
+import { addWordPressTermAncestors, buildWordPressImportDedupeKey, mapWordPressContentStatus, normalizeWordPressSource, selectWordPressImportItems, summarizeD1BatchResults } from './service';
 
 function collectHooks() {
   const hooks = new Map<string, Function>();
@@ -50,6 +50,12 @@ describe('WordPress import plugin', () => {
     expect(html).toContain('name="contentTypes" value="post"');
     expect(html).toContain('name="contentTypes" value="page"');
     expect(html).toContain('name="contentTypes" value="note"');
+    expect(html).toContain('name="dedupeFields" value="title"> 标题');
+    expect(html).toContain('name="dedupeFields" value="slug"> 别名');
+    expect(html).toContain('name="dedupeFields" value="id" checked');
+    expect(html).toContain('selectedDedupeFields');
+    expect(html).toContain('dedupeSelectionKey');
+
     expect(html).toContain('selectionKey');
     expect(html).toContain('/api/admin/wordpress-import');
     expect(html).toContain('csrf-value');
@@ -66,7 +72,7 @@ describe('WordPress import plugin', () => {
     expect(html).toContain('D1 实际写入行数');
     expect(html).toContain('已确认提交');
     expect(html).toContain('function hasImportableItems');
-    expect(html).toContain('lastPreview={sourceXml:sourceXml,selection:chosenTypes.join(','),parts:parts,reports:reports}');
+    expect(html).toContain("lastPreview={sourceXml:sourceXml,selection:chosenTypes.join(',')+'|'+chosenDedupeFields.join(','),parts:parts,reports:reports}");
     expect(html).toContain('当前分片只写入尚未成功导入的所选内容及其附件');
   });
 
@@ -78,6 +84,55 @@ describe('WordPress import plugin', () => {
   });
 });
 
+
+
+describe('WordPress duplicate matching options', () => {
+  const item = { title: 'Same title', slug: 'same-slug', oldId: 12 };
+
+  it('uses all selected fields as one composite key', () => {
+    const fields = ['title', 'slug'] as const;
+    const candidate = buildWordPressImportDedupeKey(item, fields, 'https://source.example');
+    expect(candidate).toBe(buildWordPressImportDedupeKey(
+      { ...item, oldId: 99 }, fields, 'https://other.example',
+    ));
+    expect(candidate).not.toBe(buildWordPressImportDedupeKey(
+      { ...item, slug: 'different-slug', oldId: 99 }, fields, 'https://other.example',
+    ));
+    expect(candidate).not.toBe(buildWordPressImportDedupeKey(
+      { ...item, title: 'Different title', oldId: 99 }, fields, 'https://other.example',
+    ));
+  });
+
+  it('supports title-only and slug-only matching independently', () => {
+    expect(buildWordPressImportDedupeKey(item, ['title'], 'https://source.example'))
+      .toBe(buildWordPressImportDedupeKey({ ...item, slug: 'different-slug' }, ['title'], 'https://other.example'));
+    expect(buildWordPressImportDedupeKey(item, ['slug'], 'https://source.example'))
+      .toBe(buildWordPressImportDedupeKey({ ...item, title: 'Different title' }, ['slug'], 'https://other.example'));
+  });
+
+  it('scopes ID matching to the source and supports legacy source-less markers', () => {
+    const fields = ['id'] as const;
+    const candidate = buildWordPressImportDedupeKey(item, fields, 'https://source.example');
+    expect(candidate).toBe(buildWordPressImportDedupeKey(
+      { ...item, title: 'Other title', slug: 'other-slug' }, fields, 'https://source.example',
+    ));
+    expect(candidate).not.toBe(buildWordPressImportDedupeKey(item, fields, 'https://other.example'));
+    const legacyKey = buildWordPressImportDedupeKey(item, fields, '', true);
+    expect(legacyKey).not.toBe(candidate);
+    expect(legacyKey).toBe(buildWordPressImportDedupeKey(
+      { ...item, title: 'Legacy title', slug: 'legacy-slug' }, fields, '', true,
+    ));
+  });
+
+  it('combines ID with title or slug when multiple options are selected', () => {
+    const fields = ['title', 'id'] as const;
+    const candidate = buildWordPressImportDedupeKey(item, fields, 'https://source.example');
+    expect(candidate).toBe(buildWordPressImportDedupeKey(item, fields, 'https://source.example'));
+    expect(candidate).not.toBe(buildWordPressImportDedupeKey(
+      { ...item, oldId: 99 }, fields, 'https://source.example',
+    ));
+  });
+});
 
 describe('WordPress post status mapping', () => {
   it('maps native WordPress statuses to Typecho post states', () => {
