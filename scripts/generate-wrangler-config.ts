@@ -89,21 +89,23 @@ ${kvNamespaceId ? `[[kv_namespaces]]
 binding = "TYPECHO_CACHE"
 id = ${tomlString(kvNamespaceId)}
 
-` : ''}# Workers Logs persistence: [metrics] phase samples need to land in the
-# stored logs to be queryable; real-time tail alone keeps them invisible.
+` : ''}# Error-focused Observability:
+# - Keep persisted logs enabled so console.error() and exception diagnostics are retained.
+# - Disable automatic invocation logs to avoid recording every normal request.
+# - Disable traces to avoid unnecessary telemetry volume.
 [observability]
-enabled = false
+enabled = true
 head_sampling_rate = 1
 
 [observability.logs]
-enabled = false
+enabled = true
 head_sampling_rate = 1
 invocation_logs = false
 persist = true
 
 [observability.traces]
 enabled = false
-persist = true
+persist = false
 head_sampling_rate = 1
 `;
 }
