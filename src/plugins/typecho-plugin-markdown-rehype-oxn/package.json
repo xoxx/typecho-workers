@@ -17,7 +17,7 @@
   "typecho": {
     "plugin": {
       "id": "typecho-plugin-markdown-rehype-oxn",
-      "name": "Markdown Rehype OXN",
+      "name": "Markdown Rehype oxn",
       "description": "对已经输出的文章 HTML 增强数学公式、Mermaid 流程图、代码高亮和 BlurHash 图片模糊预览，不接管 Markdown 解析",
       "version": "1.0.0",
       "author": "怸歪",
