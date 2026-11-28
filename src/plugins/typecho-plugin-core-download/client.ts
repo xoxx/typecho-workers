@@ -153,7 +153,7 @@ function renderMount(root: HTMLElement, config: MountConfig): void {
   const logoWrap = document.createElement('div');
   logoWrap.className = 'copyright-right';
   const logoLink = document.createElement('a');
-  logoLink.href = 'https://347777.xyz';
+  logoLink.href = 'https://www.lovestu.com/coredownload.html';
   logoLink.target = '_blank';
   appendInlineSvg(logoLink, CORE_DOWNLOAD_UI_ICONS.front_logo || '');
   logoWrap.appendChild(logoLink);
