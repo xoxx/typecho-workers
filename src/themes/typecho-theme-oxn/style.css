@@ -1033,7 +1033,7 @@ body.warm-theme {
   padding: 0px 28px 0px 6px;
   border-radius: 3px;
   background: var(--warm-surface-strong);
-  line-height: 1.5;
+  line-height: 1.75;
   vertical-align: baseline;
 }
 .warm-prose [data-warm-inline-code] code,
